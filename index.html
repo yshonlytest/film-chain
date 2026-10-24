@@ -975,8 +975,11 @@
     <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;" />
 
     <div class="form-group">
-      <label for="comfyUrlInput">🖥️ 路線 A 專用：本地 ComfyUI 網址</label>
+      <label for="comfyUrlInput">🖥️ 路線 A 專用：ComfyUI 服務網址</label>
       <input type="text" id="comfyUrlInput" value="http://127.0.0.1:8188" />
+      <div style="font-size:0.75rem; color:var(--muted); margin-top:4px;">
+        💡 本地操作請填 <code>http://127.0.0.1:8188</code>；若在公網站台操作，請搭配 Cloudflare Tunnel 網址（如 <code>https://comfy.onlytest.dev</code>）以避免瀏覽器 Mixed Content 阻擋。
+      </div>
     </div>
 
     <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 16px;">
@@ -1303,6 +1306,27 @@ Return ONLY valid JSON matching this schema:
 }`;
     }
 
+    // ==================== Smart Network Proxy (CORS Bypass) ====================
+    async function fetchWithProxy(targetUrl, options = {}) {
+      const isPublicWeb = window.location.protocol.startsWith("http") &&
+                          !window.location.hostname.includes("127.0.0.1") &&
+                          !window.location.hostname.includes("localhost");
+      // 若是在公網站台且為外部 API 請求，自動透過本 Worker 的 /api/proxy 代理繞過 CORS 阻擋
+      if (isPublicWeb && !targetUrl.startsWith("/")) {
+        const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
+        return await fetch(proxyUrl, options);
+      }
+      try {
+        return await fetch(targetUrl, options);
+      } catch (err) {
+        if (isPublicWeb && !targetUrl.startsWith("/")) {
+          const proxyUrl = `/api/proxy?target=${encodeURIComponent(targetUrl)}`;
+          return await fetch(proxyUrl, options);
+        }
+        throw err;
+      }
+    }
+
     async function callPlanViaGemini(apiKey, modelName, systemPrompt, chineseDesc) {
       const inputArr = [];
       if (refImageBase64) {
@@ -1310,7 +1334,7 @@ Return ONLY valid JSON matching this schema:
       }
       inputArr.push({ type: "text", text: `使用者中文描述：${chineseDesc}` });
 
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      const res = await fetchWithProxy("https://generativelanguage.googleapis.com/v1beta/interactions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1349,7 +1373,7 @@ Return ONLY valid JSON matching this schema:
       }
       userContent.push({ type: "text", text: `使用者中文描述：${chineseDesc}` });
 
-      const res = await fetch(`${baseUrl}/chat/completions`, {
+      const res = await fetchWithProxy(`${baseUrl}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1377,7 +1401,7 @@ Return ONLY valid JSON matching this schema:
       }
       inputArr.push({ type: "text", text: gridPrompt });
 
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+      const res = await fetchWithProxy("https://generativelanguage.googleapis.com/v1beta/interactions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1409,7 +1433,7 @@ Return ONLY valid JSON matching this schema:
     }
 
     async function generateGridViaOpenAI(apiKey, baseUrl, gridPrompt) {
-      const res = await fetch(`${baseUrl}/images/generations`, {
+      const res = await fetchWithProxy(`${baseUrl}/images/generations`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1858,7 +1882,7 @@ Return ONLY valid JSON matching this schema:
           contentArr.push({ type: "image_url", image_url: { url: lastFrameDataUrl }, role: "last_frame" });
         }
 
-        const createRes = await fetch(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks`, {
+        const createRes = await fetchWithProxy(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1875,7 +1899,7 @@ Return ONLY valid JSON matching this schema:
 
         while (true) {
           await new Promise(r => setTimeout(r, 4000));
-          const pollRes = await fetch(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks/${taskId}`, {
+          const pollRes = await fetchWithProxy(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks/${taskId}`, {
             headers: { "Authorization": `Bearer ${prefs.cloudVideoKey}` },
           });
           if (!pollRes.ok) continue;
@@ -1891,7 +1915,7 @@ Return ONLY valid JSON matching this schema:
 
       if (provider === "cloud-fal") {
         const modelPath = prefs.cloudVideoModel.includes("/") ? prefs.cloudVideoModel : "fal-ai/bytedance/seedance/v1/pro/image-to-video";
-        const createRes = await fetch(`https://queue.fal.run/${modelPath}`, {
+        const createRes = await fetchWithProxy(`https://queue.fal.run/${modelPath}`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -1908,11 +1932,11 @@ Return ONLY valid JSON matching this schema:
         const qData = await createRes.json();
         while (true) {
           await new Promise(r => setTimeout(r, 4000));
-          const sRes = await fetch(qData.status_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
+          const sRes = await fetchWithProxy(qData.status_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
           if (!sRes.ok) continue;
           const sData = await sRes.json();
           if (sData.status === "COMPLETED") {
-            const finalRes = await fetch(qData.response_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
+            const finalRes = await fetchWithProxy(qData.response_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
             const finalData = await finalRes.json();
             return finalData.video?.url || finalData.video_url;
           }
@@ -1921,7 +1945,7 @@ Return ONLY valid JSON matching this schema:
       }
 
       // Fallback OpenAPI
-      const createRes = await fetch(`${prefs.cloudVideoBaseUrl}/video/generations`, {
+      const createRes = await fetchWithProxy(`${prefs.cloudVideoBaseUrl}/video/generations`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${prefs.cloudVideoKey}` },
         body: JSON.stringify({
