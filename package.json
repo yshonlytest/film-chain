@@ -4,7 +4,9 @@
   "description": "H3 Storyboard Studio - First/Last-frame chained video generation studio",
   "private": true,
   "scripts": {
-    "test": "node --test tests/core.test.js"
+    "test": "node --test tests/core.test.js",
+    "deploy": "wrangler deploy",
+    "preview": "wrangler dev"
   },
   "keywords": [
     "comfyui",
@@ -13,5 +15,8 @@
     "video-generation"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^4.152.0"
+  }
 }

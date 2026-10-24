@@ -1,0 +1,2186 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>H3 九宮格分鏡自動產片工作坊</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0b0f17;
+      --panel: #131a27;
+      --panel-hover: #192233;
+      --border: #253147;
+      --text: #eef2f9;
+      --muted: #93a3bf;
+      --accent: #6366f1;
+      --accent-hover: #818cf8;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --radius: 14px;
+      scrollbar-color: #334155 #0b0f17;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: radial-gradient(circle at 15% 0%, #172036 0%, var(--bg) 60%);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+      padding-bottom: 70px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 40;
+      backdrop-filter: blur(14px);
+      background: rgba(11, 15, 23, 0.9);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .brand { display: flex; align-items: center; gap: 12px; }
+    .brand h1 { font-size: 1.2rem; font-weight: 700; }
+
+    .badge {
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: rgba(99, 102, 241, 0.18);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.35);
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .badge.ok { background: rgba(16, 185, 129, 0.16); color: #6ee7b7; border-color: rgba(16, 185, 129, 0.35); }
+    .badge.warn { background: rgba(245, 158, 11, 0.16); color: #fcd34d; border-color: rgba(245, 158, 11, 0.35); }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+    button, .btn {
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 0.88rem;
+      font-weight: 600;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--panel);
+      color: var(--text);
+      transition: all 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+    }
+    button:hover:not(:disabled), .btn:hover { background: var(--panel-hover); border-color: #3b4d6e; }
+    button.primary {
+      background: linear-gradient(135deg, #6366f1, #4f46e5);
+      border-color: #6366f1;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(99, 102, 241, 0.3);
+    }
+    button.success {
+      background: linear-gradient(135deg, #10b981, #059669);
+      border-color: #10b981;
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.28);
+    }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* Single Column Centered Layout for Clean Flow */
+    .workflow-container {
+      max-width: 1040px;
+      margin: 24px auto;
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .workflow-card {
+      background: rgba(19, 26, 39, 0.95);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .card-title {
+      font-size: 1.08rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: #fff;
+      font-size: 0.88rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+    }
+
+    /* Route Selector at Top */
+    .route-selection-box {
+      background: #090e18;
+      border: 1.5px solid #23314a;
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin-bottom: 4px;
+    }
+    .route-tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 12px;
+    }
+    @media (max-width: 680px) { .route-tabs { grid-template-columns: 1fr; } }
+
+    .route-tab-card {
+      border: 2px solid #222f46;
+      background: #111726;
+      border-radius: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .route-tab-card:hover { border-color: #3e5275; }
+    .route-tab-card.active.local {
+      border-color: var(--accent);
+      background: rgba(99, 102, 241, 0.14);
+      box-shadow: 0 0 18px rgba(99, 102, 241, 0.25);
+    }
+    .route-tab-card.active.cloud {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.14);
+      box-shadow: 0 0 18px rgba(16, 185, 129, 0.25);
+    }
+    .route-tab-title {
+      font-size: 0.98rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .route-tab-desc { font-size: 0.78rem; color: var(--muted); line-height: 1.45; }
+
+    /* Form & Input Styles */
+    .form-group { margin-bottom: 16px; }
+    label { display: flex; align-items: center; font-size: 0.86rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+
+    input[type="text"], input[type="password"], input[type="number"], select, textarea {
+      width: 100%;
+      padding: 10px 14px;
+      background: #0d131f;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 0.92rem;
+    }
+    textarea { resize: vertical; min-height: 85px; }
+    input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+
+    /* Interactive Circle "ⓘ" Tooltips */
+    .info-tip {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(99, 102, 241, 0.22);
+      color: #a5b4fc;
+      border: 1px solid rgba(99, 102, 241, 0.45);
+      font-size: 0.72rem;
+      font-weight: 700;
+      cursor: help;
+      user-select: none;
+      margin-left: 6px;
+      vertical-align: middle;
+      transition: all 0.15s ease;
+    }
+    .info-tip:hover {
+      background: var(--accent);
+      color: #ffffff;
+      border-color: var(--accent);
+      transform: scale(1.08);
+    }
+    .info-tip .tooltip-content {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      bottom: calc(100% + 9px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #172133;
+      color: #e2e8f0;
+      border: 1px solid #3b4d6e;
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 0.78rem;
+      font-weight: normal;
+      line-height: 1.55;
+      width: max-content;
+      max-width: 320px;
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.6);
+      z-index: 1000;
+      pointer-events: none;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      white-space: normal;
+      text-align: left;
+    }
+    .info-tip .tooltip-content::after {
+      content: "";
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px;
+      border-style: solid;
+      border-color: #3b4d6e transparent transparent transparent;
+    }
+    .info-tip:hover .tooltip-content { visibility: visible; opacity: 1; }
+
+    /* Security Notice Banner */
+    .security-notice-card {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      border-radius: var(--radius);
+      padding: 14px 20px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Step 1 Two-Column Responsive Layout */
+    .step1-container {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 20px;
+      align-items: stretch;
+    }
+    @media (max-width: 768px) {
+      .step1-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .ref-image-col {
+      display: flex;
+      flex-direction: column;
+    }
+    .ref-image-col label {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #cbd5e1;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .ref-dropzone {
+      flex: 1;
+      min-height: 380px;
+      border: 1.5px dashed #364869;
+      border-radius: 12px;
+      padding: 16px;
+      background: rgba(13, 19, 31, 0.65);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .ref-dropzone:hover {
+      border-color: var(--accent);
+      background: rgba(19, 26, 39, 0.85);
+    }
+    .ref-dropzone img {
+      max-height: 290px;
+      max-width: 100%;
+      border-radius: 8px;
+      object-fit: contain;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      display: none;
+      margin-bottom: 12px;
+    }
+    .ref-dropzone-btn {
+      padding: 8px 16px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      border-radius: 8px;
+      background: #1e293b;
+      border: 1px solid #3b4d6e;
+      color: #f1f5f9;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.15s ease;
+    }
+    .ref-dropzone-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .step1-controls-col {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .duration-bar {
+      display: grid;
+      grid-template-columns: 1.3fr 0.7fr;
+      gap: 14px;
+      align-items: end;
+      background: rgba(99, 102, 241, 0.07);
+      border: 1px solid rgba(99, 102, 241, 0.25);
+      padding: 14px;
+      border-radius: 10px;
+    }
+    @media (max-width: 640px) { .duration-bar { grid-template-columns: 1fr; } }
+
+    /* Step 2 Components */
+    .storyboard-preview-box {
+      background: #090d14;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 14px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .storyboard-preview-box img { max-width: 100%; border-radius: 8px; }
+
+    .sliced-panels-bar {
+      display: grid;
+      grid-template-columns: repeat(9, 1fr);
+      gap: 6px;
+      margin-top: 10px;
+    }
+    @media (max-width: 720px) { .sliced-panels-bar { grid-template-columns: repeat(3, 1fr); } }
+    .sliced-panel-item {
+      background: #111827;
+      border: 1px solid #26334d;
+      border-radius: 6px;
+      padding: 3px;
+      font-size: 0.68rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .sliced-panel-item img {
+      width: 100%;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      border-radius: 4px;
+      display: block;
+      margin-bottom: 2px;
+    }
+
+    .segment-card {
+      background: #0d1422;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+    }
+    .segment-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: #a5b4fc;
+      flex-wrap: wrap;
+    }
+
+    /* Mini 3x3 Grid Position Indicator */
+    .mini-grid-indicator {
+      display: inline-grid;
+      grid-template-columns: repeat(3, 8px);
+      grid-template-rows: repeat(3, 8px);
+      gap: 2px;
+      padding: 3px;
+      background: #090e18;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      vertical-align: middle;
+      cursor: help;
+    }
+    .mini-grid-cell {
+      width: 8px;
+      height: 8px;
+      background: #1e293b;
+      border-radius: 1.5px;
+      transition: all 0.15s ease;
+    }
+    .mini-grid-cell.active {
+      background: #38bdf8;
+      box-shadow: 0 0 6px rgba(56, 189, 248, 0.85);
+    }
+
+    /* Speed preset buttons */
+    .speed-options {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    @media (max-width: 640px) { .speed-options { grid-template-columns: 1fr; } }
+    .speed-option {
+      border: 1px solid var(--border);
+      background: #0d131f;
+      border-radius: 10px;
+      padding: 10px 12px;
+      cursor: pointer;
+    }
+    .speed-option.active { border-color: var(--accent); background: rgba(99, 102, 241, 0.16); }
+    .speed-option h4 { font-size: 0.85rem; margin-bottom: 3px; }
+    .speed-option p { font-size: 0.74rem; color: var(--muted); }
+
+    /* Code block */
+    .code-block-box {
+      background: #070b12;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 8px;
+      position: relative;
+    }
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      font-size: 0.76rem;
+      color: #94a3b8;
+    }
+    .code-block-box pre {
+      margin: 0;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.78rem;
+      line-height: 1.5;
+      color: #cbd5e1;
+    }
+    .code-comment { color: #64748b; font-style: italic; }
+    .code-cmd { color: #38bdf8; font-weight: 600; }
+    .code-flag { color: #f59e0b; }
+
+    /* Progress & Video Stage */
+    .progress-track {
+      width: 100%; height: 12px; background: #090d14;
+      border-radius: 999px; overflow: hidden; border: 1px solid var(--border); margin: 10px 0;
+    }
+    .progress-fill {
+      height: 100%; width: 0%;
+      background: linear-gradient(90deg, #6366f1, #10b981);
+      transition: width 0.4s ease;
+    }
+
+    .video-player-stage {
+      background: #06090f;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      text-align: center;
+      margin-bottom: 14px;
+    }
+    .video-player-stage video { width: 100%; max-height: 480px; border-radius: 8px; background: #000; }
+
+    .cloud-clips-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .cloud-clip-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: #0d1422;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.82rem;
+    }
+
+    dialog {
+      margin: auto;
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px;
+      width: min(620px, 95vw);
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+    }
+    dialog::backdrop { background: rgba(5, 8, 14, 0.75); backdrop-filter: blur(5px); }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span style="font-size: 1.5rem;">🎬</span>
+      <div>
+        <h1>H3 九宮格分鏡自動產片工作坊</h1>
+        <span style="font-size: 0.76rem; color: var(--muted);">線性工作流導引 · 支援本地 ComfyUI 免費算力 與 雲端 Seedance 買額度秒產</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div style="display:inline-flex; align-items:center;">
+        <span id="comfyStatusBadge" class="badge warn" onclick="checkComfyConnection()" style="cursor:pointer;">檢查本地 ComfyUI...</span>
+        <span class="info-tip">ⓘ
+          <span class="tooltip-content">
+            <strong>🖥️ 本地 ComfyUI 狀態</strong><br>
+            • 綠燈 🟢：本機已連線。<br>
+            • 黃燈 ⚪：未連線。若走本地路線，請在資料夾雙擊 <code>一鍵啟動_H3分鏡工作坊.command</code> 即可自動開好。
+          </span>
+        </span>
+      </div>
+      <button type="button" onclick="loadShisaDemo()">🦁 載入 15 秒預設方案</button>
+    </div>
+  </header>
+
+  <main class="workflow-container">
+
+    <!-- 🛡️ Privacy & API Key Notice Banner -->
+    <div class="security-notice-card">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: flex-start; gap: 12px; max-width: 760px;">
+          <span style="font-size: 1.6rem; line-height: 1.2;">🛡️</span>
+          <div>
+            <div style="font-size: 0.92rem; font-weight: 700; color: #6ee7b7; margin-bottom: 2px;">
+              純本地瀏覽器技術架構 · API Key 零外流保障
+            </div>
+            <div style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5;">
+              本工作坊採用<strong>純前端架構 (Client-Side Only)</strong>，您填寫的所有 API 密鑰（如 Google Gemini、OpenAI、雲端影片 API）<strong>100% 僅儲存在您本機瀏覽器的 <code>localStorage</code> 中</strong>，絕無任何中間伺服器攔截或儲存。所有 API 均由您的瀏覽器端對端直連發送，請安心使用！
+            </div>
+          </div>
+        </div>
+        <button type="button" class="btn" onclick="openSettingsModal()" style="border-color:#10b981; color:#a7f3d0; background:rgba(16,185,129,0.12); padding:8px 16px; white-space:nowrap;">
+          🔑 點此設定 / 檢查 API Key
+        </button>
+      </div>
+    </div>
+
+    <!-- 🔀 Step 0: Route Selection -->
+    <div class="route-selection-box">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+        <strong style="font-size:0.96rem; color:#e2e8f0; display:flex; align-items:center; gap:8px;">
+          <span>🔀 先選路線：您希望如何生成最終影片？</span>
+          <span class="info-tip">ⓘ
+            <span class="tooltip-content">
+              <strong>💡 兩條路線完全隔離</strong><br>
+              選擇後，下方「步驟三」會完全切換成對應路線的專屬介面，絕不混淆！
+            </span>
+          </span>
+        </strong>
+        <span id="currentRouteBadge" class="badge ok">目前選取：🖥️ 本地 ComfyUI 免費流</span>
+      </div>
+
+      <div class="route-tabs">
+        <div id="routeCardLocal" class="route-tab-card active local" onclick="selectRoute('local')">
+          <div class="route-tab-title">
+            <span>🖥️ 路線 A：本地極限省錢流 (Mac 免費跑)</span>
+            <span class="badge ok" style="font-size:0.7rem;">0 元免費</span>
+          </div>
+          <div class="route-tab-desc">
+            直接調用本機 Mac 的 MiniMax-H3 FL2VA 模型，雙擊啟動檔自動排程生片與 ffmpeg 合併，不用花一毛 API 影片額度。
+          </div>
+        </div>
+
+        <div id="routeCardCloud" class="route-tab-card" onclick="selectRoute('cloud')">
+          <div class="route-tab-title">
+            <span>⚡ 路線 B：雲端極速秒產流 (Seedance / fal.ai)</span>
+            <span class="badge warn" style="font-size:0.7rem;">買額度調用</span>
+          </div>
+          <div class="route-tab-desc">
+            免裝 ComfyUI、免開電腦顯卡！直接呼叫火山方舟 Seedance 1.0 Pro 或 fal.ai 首尾幀雲端併發，1~2 分鐘出片。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 步驟一：輸入圖文與時長方案 -->
+    <section class="workflow-card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="step-num">1</span>
+          <span>步驟一：輸入圖文與選擇時長方案</span>
+        </div>
+        <div style="font-size:0.78rem; color:var(--muted);">
+          提供一張主角圖 ＋ 故事想法，交由 AI 規劃完整分鏡
+        </div>
+      </div>
+
+      <div class="step1-container">
+        <!-- Left Column: Reference Image Only -->
+        <div class="ref-image-col">
+          <label>
+            <span>預設參考圖（供AI鎖定人物及風格）</span>
+            <span class="info-tip">ⓘ
+              <span class="tooltip-content">
+                <strong>🖼️ 主角風格錨定圖</strong><br>
+                供 AI 分析視覺風格、主要角色外貌與場景質感，確保後續 9 格分鏡及每 5 秒影片均維持高度一致性。
+              </span>
+            </span>
+          </label>
+          <div class="ref-dropzone" onclick="document.getElementById('refImageInput').click()">
+            <input type="file" id="refImageInput" accept="image/*" style="display:none" onchange="handleRefUpload(this)" />
+            <img id="refPreview" alt="預設參考圖預覽" />
+            <div id="refPlaceholderNotice" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+              <span id="refPlaceholderIcon" style="font-size: 2.2rem; opacity: 0.7;">🖼️</span>
+              <button type="button" class="ref-dropzone-btn" id="refUploadBtn">
+                <span id="refUploadBtnText">📷 載入圖片</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Story & Config Controls -->
+        <div class="step1-controls-col">
+          <!-- Chinese Description -->
+          <div class="form-group" style="margin-bottom:0;">
+            <label for="chineseDesc">
+              <span>📝 中文情節描述（開口台詞請放引號「...」內）</span>
+              <span class="info-tip">ⓘ
+                <span class="tooltip-content">
+                  <strong>📝 台詞對嘴提示</strong><br>
+                  台詞請放在引號中（如「坐太久活動一下」），AI 會自動轉成 <code>&lt;d&gt;[Chinese] ...&lt;/d&gt;</code> 標籤，讓模型產生自然的中文發音與對嘴動作。
+                </span>
+              </span>
+            </label>
+            <textarea id="chineseDesc" placeholder="請輸入您的故事創意與主角台詞..."></textarea>
+          </div>
+
+          <!-- Duration Strategy -->
+          <div class="duration-bar">
+            <div>
+              <label for="durationModeSelect">
+                <span>⏱️ 影片時長方案（以每 5 秒為一鏡段接力）</span>
+                <span class="info-tip">ⓘ
+                  <span class="tooltip-content">
+                    <strong>⏱️ 時長方案說明</strong><br>
+                    • <strong>🤖 AI 自動分析</strong>：依情節轉折與台詞量自動給出 10s、15s、20s... 最佳秒數，保證節奏舒適不趕場。<br>
+                    • <strong>✍️ 擴寫至指定秒數</strong>：指定如 20 秒或 25 秒，AI 會主動將故事擴寫為情節飽滿的完整多幕劇本！
+                  </span>
+                </span>
+              </label>
+              <select id="durationModeSelect" onchange="toggleTargetSecondsInput()">
+                <option value="auto">🤖 方案 A：請 AI 根據情節複雜度「自動分析最適合的秒數」(不限段落)</option>
+                <option value="expand">✍️ 方案 B：指定目標總秒數，請 AI「自動擴寫豐富劇情至指定秒數」</option>
+              </select>
+            </div>
+            <div id="customSecondsBox" style="display:none;">
+              <label for="targetSecondsInput">🎯 目標總秒數 (5的倍數)</label>
+              <input type="number" id="targetSecondsInput" value="20" min="5" max="120" step="5" />
+            </div>
+          </div>
+
+          <!-- AI Provider for Step 1 -->
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+            <div>
+              <label>🧠 分鏡規劃文字模型 (Prompt 規劃)</label>
+              <select id="promptProviderSelect" onchange="saveLocalPrefs()">
+                <option value="gemini">Google Gemini (gemini-3.8-flash - 推薦/速度快)</option>
+                <option value="gemini-pro">Google Gemini Pro (gemini-3.1-pro-preview)</option>
+                <option value="openai">OpenAI / OpenAPI 相容 (GPT-4o / 4.1)</option>
+              </select>
+            </div>
+            <div>
+              <label>🎨 3×3 九宮格生圖模型</label>
+              <select id="imageProviderSelect" onchange="saveLocalPrefs()">
+                <option value="nano-banana-2">Nano Banana 2 (gemini-3.1-flash-image - 推薦/幾秒出圖)</option>
+                <option value="nano-banana-pro">Nano Banana Pro (gemini-3-pro-image)</option>
+                <option value="openai-image">OpenAI Image (gpt-image-1)</option>
+                <option value="manual">不呼叫 API (直接使用既有九宮格)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Execute Step 1 Button -->
+          <button type="button" id="planBtn" class="primary" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem; margin-top:2px;" onclick="executeStep1()">
+            ✨ 執行步驟一：AI 分析時長 ＆ 產生九宮格與各段分鏡 Prompt (前往步驟二)
+          </button>
+          <div id="planStatusMsg" style="font-size: 0.85rem; color: var(--muted); margin-top: 2px;"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 步驟二：九宮格及分鏡 Prompt 審閱微調 -->
+    <section class="workflow-card" id="step2Card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="step-num">2</span>
+          <span>步驟二：九宮格分鏡與各 5 秒分鏡腳本審閱</span>
+        </div>
+      </div>
+
+      <!-- 1. 九宮格預覽移至最上方 -->
+      <div class="storyboard-preview-box" id="gridPreviewContainer" style="display: none;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; font-size:0.8rem; color:var(--muted); flex-wrap:wrap; gap:8px;">
+          <span>
+            <strong style="color:#e2e8f0;">3×3 九宮格分鏡圖</strong>
+            <span style="color:#94a3b8; font-size:0.75rem; margin-left:6px;">（排列順序：由左至右、由上至下：第 1 列為 Panel 1~3，第 2 列為 Panel 4~6，第 3 列為 Panel 7~9）</span>
+          </span>
+          <div style="display:flex; gap:6px;">
+            <input type="file" id="gridImageInput" accept="image/*" style="display:none" onchange="handleGridUpload(this)" />
+            <button type="button" class="btn" onclick="document.getElementById('gridImageInput').click()" style="padding:3px 9px; font-size:0.75rem;">📁 更換九宮格圖</button>
+            <a id="downloadGridLink" class="btn" href="#" download="storyboard_9grid.png" style="padding:3px 9px; font-size:0.75rem;">⬇️ 下載九宮格大圖</a>
+          </div>
+        </div>
+        <img id="plannedGridImg" src="" alt="3x3 九宮格分鏡圖" />
+        <div id="slicedPanelsContainer" class="sliced-panels-bar"></div>
+      </div>
+
+      <div id="expandedStoryBox" style="font-size: 0.84rem; color: #cbd5e1; background: rgba(99,102,241,0.1); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; display: none;"></div>
+
+      <!-- 2. 功能按鈕及時長統計與 Prompt 控制放在一起 -->
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px; padding:10px 14px; background:#0b101b; border:1px solid #1f2b3e; border-radius:10px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+          <strong style="font-size:0.92rem; color:#e2e8f0;">🎞️ 各分段腳本與 Prompt 微調</strong>
+          <span id="totalDurationBadge" class="badge">共 3 段，總長 15 秒</span>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <button type="button" class="btn" onclick="addSegmentCard()" style="padding:6px 12px; font-size:0.82rem; background:#1e293b; border-color:#38bdf8; color:#7dd3fc;">
+            ➕ 新增一段 (+5秒)
+          </button>
+          <button type="button" id="replanBtn" class="btn" onclick="replanCurrentSegmentsViaAI()" style="padding:6px 14px; font-size:0.82rem; background:linear-gradient(135deg, #4f46e5, #6366f1); border-color:#6366f1; color:#fff; box-shadow:0 2px 8px rgba(99,102,241,0.25);">
+            🔄 AI 依當前總秒數重設分鏡建議
+          </button>
+        </div>
+      </div>
+
+      <!-- Segment list cards with mini 3x3 indicator -->
+      <div id="segmentsContainer"></div>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px; padding-top:16px; border-top:1px solid #1f2b3e; flex-wrap:wrap; gap:12px;">
+        <span style="font-size:0.82rem; color:var(--muted);">💡 每一段 Prompt、開口台詞或目標格都可直接在此修改，增減秒數會即時同步！</span>
+        <button type="button" class="primary" onclick="confirmStep2AndProceed()" style="padding:10px 20px; font-size:0.92rem;">
+          ✅ 確認分鏡無誤，前往步驟三產片 (前往步驟三 ⬇️)
+        </button>
+      </div>
+    </section>
+
+    <!-- 步驟三：產影與合併 (根據最頂部路線二選一，完全隔離顯示) -->
+    <section class="workflow-card" id="step3Card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="step-num">3</span>
+          <span id="step3TitleText">步驟三：本地 ComfyUI 產影片與自動合併</span>
+        </div>
+        <span id="step3RouteTag" class="badge ok">路線 A 本地模式</span>
+      </div>
+
+      <!-- Mode A: Local ComfyUI Panel -->
+      <div id="panelLocalView">
+        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #a7f3d0;">
+          <strong>⚡ 本地 ComfyUI 啟動說明：</strong><br>
+          直接在專案資料夾雙擊 <code>一鍵啟動_H3分鏡工作坊.command</code> 即可自動開好服務（右上角亮綠燈 🟢 即可）。本模式完全免費，由您 Mac 的顯卡在背景逐段生成、自動剪除首幀並由 ffmpeg 合併成單一 MP4 存於 <code>ComfyUI/output/...</code>。
+        </div>
+
+        <div class="form-group">
+          <label>⚡ 選擇本地渲染畫質 / 速度檔位</label>
+          <div class="speed-options">
+            <div class="speed-option active" data-speed="quality" onclick="selectSpeed('quality')">
+              <h4>🎬 預設方案 (推薦 / 畫質最穩)</h4>
+              <p>20 Steps · 640×480 · 124幀 · 自動剪首幀與尾幀接首幀（畫質最穩）</p>
+            </div>
+            <div class="speed-option" data-speed="balanced" onclick="selectSpeed('balanced')">
+              <h4>⚖️ 平衡加速模式</h4>
+              <p>14 Steps + Core Reuse 4 + Token 縮減（約快 2.2 倍）</p>
+            </div>
+            <div class="speed-option" data-speed="fast" onclick="selectSpeed('fast')">
+              <h4>⚡ 極速測試預覽</h4>
+              <p>6 Steps + 512×384 內部渲染（約 4~6 分鐘/段）</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="startLocalVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeLocalComfyStep()">
+          🎬 送進本地 ComfyUI 自動排程產片（尾幀接首幀 ＋ 剪首幀 ＋ 合併）
+        </button>
+      </div>
+
+      <!-- Mode B: Cloud Seedance Panel -->
+      <div id="panelCloudView" style="display:none;">
+        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #cbd5e1;">
+          <strong>☁️ 雲端極速產片說明：</strong><br>
+          <strong>完全不需要開 ComfyUI 或開機！</strong> 點擊右上方「⚙️ 設定」輸入您在火山方舟 (Ark) 或 fal.ai 購買額度的 API Key。系統會將各段首尾幀**同時送入雲端 GPU 併發運算**，約 1~2 分鐘產出所有片段！
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px;">
+          <div>
+            <label>🌐 雲端服務商 / 模型</label>
+            <select id="cloudProviderSelect">
+              <option value="cloud-seedance">火山方舟 Ark (Doubao Seedance 1.0 Pro 首尾幀)</option>
+              <option value="cloud-fal">fal.ai 額度平台 (Seedance / Kling / Wan)</option>
+              <option value="cloud-openapi">第三方買額度中轉站 (/v1/video 相容)</option>
+            </select>
+          </div>
+          <div>
+            <label>🔗 多段首尾幀銜接策略</label>
+            <select id="cloudChainModeSelect">
+              <option value="panel-anchor">⚡ 九宮格首尾幀錨定併發（多段同時在雲端算，1分鐘完成）</option>
+              <option value="strict-last-frame">🔗 嚴格擷取前一段真實尾幀接下一段首幀（排隊逐段生成）</option>
+            </select>
+          </div>
+        </div>
+
+        <button type="button" id="startCloudVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeCloudVideoStep()">
+          🚀 啟動雲端併發生成（約 1~2 分鐘完成所有段落）
+        </button>
+      </div>
+
+      <!-- Execution Progress -->
+      <div id="jobProgressPanel" style="display:none; margin-top:16px; background:#080c14; border:1px solid var(--border); border-radius:10px; padding:12px 14px;">
+        <div style="display:flex; justify-content:space-between; font-size:0.86rem; font-weight:600;">
+          <span id="jobStageText">準備中...</span>
+          <span id="jobPercentText">執行中</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="jobProgressBar" style="width: 15%;"></div>
+        </div>
+        <p id="jobHintText" style="font-size:0.78rem; color:var(--muted); margin-top:6px;">
+          💡 任務正在運算中，完成後將自動展示在下方步驟四成果區！
+        </p>
+      </div>
+    </section>
+
+    <!-- 步驟四：成果展示與導出 (分段成果清單在先，最終合併播放器在末尾) -->
+    <section class="workflow-card" id="step4Card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="step-num">4</span>
+          <span>步驟四：分段預覽、合併與成果導出</span>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <span id="step4SegmentsBadge" class="badge">共 3 段個別影片 ＋ 1 支完整彙整總片</span>
+          <span id="jobTimerBadge" class="badge ok">完成品已就緒</span>
+        </div>
+      </div>
+
+      <!-- 1. 各分段成果清單與純前端合併 (放在前) -->
+      <div id="cloudSegmentsPlaylistBox" style="display:none; background:#0d1422; border:1px solid #23314a; border-radius:10px; padding:14px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <strong style="font-size:0.88rem; color:#a5b4fc;">🎞️ 各分段成果清單（點擊可逐段試看或單獨下載）</strong>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="seamlessPlayBtn" onclick="toggleSeamlessPlayback()" style="padding:6px 12px; font-size:0.8rem;">▶️ 連續無縫播放全片</button>
+            <button type="button" id="browserMergeBtn" onclick="mergeAndDownloadCloudClips()" style="padding:6px 14px; font-size:0.82rem; background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; color:#fff; font-weight:700;">🎬 純前端一鍵合併 MP4</button>
+          </div>
+        </div>
+        <div style="font-size:0.75rem; color:#94a3b8; background:rgba(99,102,241,0.08); border-left:3px solid var(--accent); padding:8px 10px; border-radius:4px; margin-bottom:10px; line-height:1.45;">
+          💡 <strong>合併說明</strong>：若為雲端分段產片，點擊上方「🎬 純前端一鍵合併 MP4」後，瀏覽器會在前端記憶體直接串接錄製成單一無縫 MP4，完成後會自動呈現在下方<strong>最終成果播放器</strong>並觸發下載！
+        </div>
+        <div id="cloudClipsList" class="cloud-clips-list"></div>
+      </div>
+
+      <!-- 2. 最終成果展示與下載 (放在最末尾) -->
+      <div class="video-player-stage">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+          <strong style="font-size:0.88rem; color:#e2e8f0;">🏆 最終彙整成果展示與下載</strong>
+          <a id="downloadVideoBtn" class="btn primary" href="#" download style="padding:5px 14px; font-size:0.8rem; display:none;">⬇️ 下載最終完整 MP4</a>
+        </div>
+        <video id="mainVideoPlayer" controls playsinline preload="metadata"></video>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.82rem; color:var(--muted); flex-wrap:wrap; gap:8px;">
+          <span id="currentVideoLabel">尚未載入影片</span>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Settings Modal -->
+  <dialog id="settingsDialog">
+    <h3 style="margin-bottom: 12px; font-size: 1.05rem;">⚙️ API Key 與雲端服務設定</h3>
+
+    <div class="form-group">
+      <label for="geminiKeyInput">🔑 Google Gemini API Key（步驟一 分鏡規劃 & Nano Banana 九宮格生圖）</label>
+      <input type="password" id="geminiKeyInput" placeholder="AIzaSy..." />
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;" />
+
+    <div class="form-group">
+      <label for="openaiKeyInput">🔑 OpenAI / OpenAPI 相容 API Key（選填，步驟一 GPT 規劃 & OpenAI 生圖）</label>
+      <input type="password" id="openaiKeyInput" placeholder="sk-..." />
+    </div>
+    <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:10px;">
+      <div class="form-group">
+        <label for="openaiBaseUrlInput">🌐 OpenAI 相容 Base URL</label>
+        <input type="text" id="openaiBaseUrlInput" value="https://api.openai.com/v1" />
+      </div>
+      <div class="form-group">
+        <label for="openaiModelInput">🧠 OpenAI 文字模型名稱</label>
+        <input type="text" id="openaiModelInput" value="gpt-4o" />
+      </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;" />
+
+    <div style="font-size:0.86rem; font-weight:700; color:#6ee7b7; margin-bottom:8px;">
+      ☁️ 路線 B 專用：雲端買額度調用 Seedance / Kling / Wan 影片 API 設定
+    </div>
+    <div class="form-group">
+      <label for="cloudVideoKeyInput">🔑 雲端影片服務 API Key（火山方舟 Ark / BytePlus / fal.ai / 第三方額度中轉站 Key）</label>
+      <input type="password" id="cloudVideoKeyInput" placeholder="貼上您購買額度的平台 API Key..." />
+    </div>
+    <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:10px;">
+      <div class="form-group">
+        <label for="cloudVideoBaseUrlInput">🌐 雲端影片 API Base URL</label>
+        <input type="text" id="cloudVideoBaseUrlInput" value="https://ark.cn-beijing.volces.com/api/v3" />
+      </div>
+      <div class="form-group">
+        <label for="cloudVideoModelInput">🎞️ 雲端影片模型 ID (如 Seedance)</label>
+        <input type="text" id="cloudVideoModelInput" value="doubao-seedance-1-0-pro-250528" />
+      </div>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;" />
+
+    <div class="form-group">
+      <label for="comfyUrlInput">🖥️ 路線 A 專用：本地 ComfyUI 網址</label>
+      <input type="text" id="comfyUrlInput" value="http://127.0.0.1:8188" />
+    </div>
+
+    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top: 16px;">
+      <button type="button" onclick="document.getElementById('settingsDialog').close()">取消</button>
+      <button type="button" class="primary" onclick="saveSettingsModal()">💾 儲存於瀏覽器</button>
+    </div>
+  </dialog>
+
+  <!-- ==================== Core Modular Architecture ==================== -->
+  <script src="src/core/timecodeHelper.js"></script>
+  <script src="src/core/promptBuilder.js"></script>
+  <script src="src/core/comfyPayload.js"></script>
+  <script src="src/core/cloudDiagnostics.js"></script>
+
+  <script>
+    // ==================== Global State ====================
+    let activeRoute = "local"; // 'local' or 'cloud'
+    let refImageBase64 = "";
+    let refImageMime = "image/jpeg";
+    let gridImageDataUrl = "";
+    let gridImageBlob = null;
+    let slicedPanelsDataUrls = {};
+    let currentPlan = null;
+    let selectedSpeed = "quality";
+    let comfyPollTimer = null;
+    let currentPlaylist = [];
+    let isSeamlessPlaying = false;
+    let seamlessIndex = 0;
+
+    const SHISA_DEFAULT_CONFIG = {
+      width: 640,
+      height: 480,
+      frames: 124,
+      steps: 20,
+      layers: "45",
+      reuse: 2,
+      seed: 20260931,
+      trim_first_frames: 1,
+      ref_image_path: "assets/demo/okinawa_shisa_ref.jpg",
+      grid_image_path: "assets/demo/okinawa_shisa_9grid.png",
+      grid_image_name: "okinawa_shisa_9grid.png",
+      merged_video_path: "assets/demo/shisa_15s_story_merged_00001_.mp4",
+      part_videos: [
+        { title: "Part 1 (0-5s): 甦醒伸展並說「坐太久活動一下」", url: "assets/demo/shisa_15s_story_part1_00001_.mp4" },
+        { title: "Part 2 (5-10s): 尾幀接首幀・拍球分身成 5 顆並雜耍", url: "assets/demo/shisa_15s_story_part2_00001_.mp4" },
+        { title: "Part 3 (10-15s): 尾幀接首幀・5 顆球合一並回歸石雕", url: "assets/demo/shisa_15s_story_part3_00001_.mp4" }
+      ],
+      chinese_desc: "天色漸漸變暗，四下無人之時，沖繩風獅爺從雕像中甦醒，說：「坐太久活動一下」，然後把地上那顆球複製成5顆當雜耍拋球，最後回歸原狀",
+      plan: {
+        project_slug: "okinawa_shisa",
+        grid_image_name: "okinawa_shisa_9grid.png",
+        recommended_total_seconds: 15,
+        reasoning_zh: "【預設已載入：15秒沖繩風獅爺可行方案】採用 3×3 九宮格分鏡導引 + 尾幀無縫接首幀（Part 1 錨定 Panel 3、Part 2 擷取 Part 1 尾幀並錨定 Panel 6、Part 3 擷取 Part 2 尾幀並錨定 Panel 9），每段自動剪除首幀 1 格後無縫合併為 15.4 秒有聲影片。",
+        expanded_story_zh: "第一幕（0-5s）：傍晚廣場無人，風獅爺雙眼亮起金光甦醒，抬起雙爪伸展僵硬肩膀說「坐太久活動一下」。第二幕（5-10s）：前爪輕拍雕花石球激起金光，石球分身成5顆發光球飛起，風獅爺開心拋接雜耍。第三幕（10-15s）：風獅爺完成最後一拋，5顆球融合回原本的單顆石球，左爪壓回球上變回靜止石雕。",
+        segments: [
+          {
+            title: "Part 1 (0-5s): 天色漸暗・甦醒伸展並說「坐太久活動一下」",
+            end_panel: 3,
+            prompt: "Create a 5-second live-action cinematic fantasy film. Picture 1 is a nine-shot storyboard, read left to right, top to bottom; this clip covers panels 1 to 3 only. Expand each panel into a full-screen moving shot; leave the contact sheet immediately and end on the medium shot in the last frame. Keep the exact same giant Okinawa Tsuboya-yaki ceramic Shisa lion-dog statue and elevated station walkway plaza throughout.\n\nTimeline:\n0-1.5s (Panel 1): Dusk settles over the quiet empty plaza; wide establishing shot of the giant ceramic Shisa statue sitting still with its paw on the carved beige ball.\n1.5-3.0s (Panel 2): Close-up on the Shisa's face as its eyes suddenly glow with warm golden life and it awakens from stone.\n3.0-5.0s (Panel 3): Medium shot, the awakened Shisa raises both front paws to stretch its stiff shoulders and speaks in a deep playful voice: <d>[Chinese] 坐太久活動一下</d>\n\nCoherent magical motion, realistic ceramic texture, atmospheric twilight lighting. Clean cinematic cuts; no grid, borders, captions or logos. Audio: quiet evening city ambience, heavy stone rumbling as the statue stretches, and clear spoken Mandarin dialogue: <d>[Chinese] 坐太久活動一下</d>."
+          },
+          {
+            title: "Part 2 (5-10s): 尾幀接首幀・輕拍石球複製成5顆並開始拋球雜耍",
+            end_panel: 6,
+            prompt: "Create a 5-second live-action cinematic fantasy film continuing seamlessly from the first frame to the last frame. Keep the exact same giant Okinawa ceramic Shisa lion-dog statue, the carved beige ceramic ball, and the evening station walkway plaza throughout.\n\nTimeline:\n0-1.8s: From its raised-paw stretch, the living giant ceramic Shisa reaches down and taps the carved beige ceramic sphere on the pedestal, sending golden magical sparks rippling across the ball.\n1.8-3.2s: Magical golden light bursts as the single carved beige sphere duplicates and splits into 5 identical glowing ceramic balls floating upward in front of the Shisa.\n3.2-5.0s: The joyful Shisa raises both front paws and begins tossing and juggling all 5 glowing ceramic balls in a high, smooth circular arc in the evening air.\n\nCoherent magical motion, smooth juggling physics, realistic ceramic texture, warm golden magical glow against twilight. Audio: magical chime sparks as the ball multiplies into five, playful rhythmic whooshes of balls spinning in the air, and cheerful whimsical background music; no dialogue."
+          },
+          {
+            title: "Part 3 (10-15s): 尾幀接首幀・雜耍收尾、5顆球合一並回歸石雕原狀",
+            end_panel: 9,
+            prompt: "Create a 5-second live-action cinematic fantasy film continuing seamlessly from the first frame to the last frame. Keep the exact same giant Okinawa ceramic Shisa lion-dog statue, the carved beige ceramic balls, and the night station walkway plaza throughout.\n\nTimeline:\n0-2.2s: The living giant ceramic Shisa happily juggles the 5 glowing carved ceramic balls in a smooth circular arc in the night air with both front paws.\n2.2-3.8s: With a final playful toss, the 5 glowing ceramic balls converge downward and fuse back together into the single original carved beige sphere on the right side of the pedestal in a soft golden flash.\n3.8-5.0s: The Shisa lowers its left front paw back onto the single carved sphere, the golden glow in its eyes fades, and it freezes completely still back into a motionless ceramic statue in the quiet night.\n\nCoherent magical motion, smooth transition back to stillness, realistic ceramic texture, quiet evening lighting. Audio: rhythmic juggling whooshes, a soft magical convergence chime, a gentle stone thud as the paw rests on the ball, and quiet night city ambience; no dialogue."
+          }
+        ]
+      }
+    };
+
+    const SPEED_CONFIGS = {
+      quality:  { steps: 20, layers: "45", reuse: 2, core_reuse: 0, token_reduction: false, render_width: 0,   render_height: 0   },
+      balanced: { steps: 14, layers: "45", reuse: 2, core_reuse: 4, token_reduction: true,  render_width: 0,   render_height: 0   },
+      fast:     { steps: 6,  layers: "45", reuse: 2, core_reuse: 4, token_reduction: true,  render_width: 512, render_height: 384 },
+    };
+
+    // ==================== Route Switching (Sets context for Step 3) ====================
+    function selectRoute(route) {
+      activeRoute = route;
+      const isLocal = route === "local";
+
+      document.getElementById("routeCardLocal").className = `route-tab-card ${isLocal ? "active local" : ""}`;
+      document.getElementById("routeCardCloud").className = `route-tab-card ${!isLocal ? "active cloud" : ""}`;
+
+      const badge = document.getElementById("currentRouteBadge");
+      badge.textContent = isLocal ? "目前選取：🖥️ 本地 ComfyUI 免費流" : "目前選取：⚡ 雲端極速秒產流";
+      badge.className = `badge ${isLocal ? "ok" : "warn"}`;
+
+      // Update Step 3 View
+      document.getElementById("panelLocalView").style.display = isLocal ? "block" : "none";
+      document.getElementById("panelCloudView").style.display = isLocal ? "none" : "block";
+
+      const step3Title = document.getElementById("step3TitleText");
+      const step3Tag = document.getElementById("step3RouteTag");
+      if (isLocal) {
+        step3Title.textContent = "步驟三：本地 ComfyUI 產影片與自動合併";
+        step3Tag.textContent = "路線 A 本地模式";
+        step3Tag.className = "badge ok";
+      } else {
+        step3Title.textContent = "步驟三：雲端 Seedance 併發極速產片與導出";
+        step3Tag.textContent = "路線 B 雲端模式";
+        step3Tag.className = "badge warn";
+      }
+    }
+
+    function getPrefs() {
+      return {
+        geminiKey: localStorage.getItem("h3_gemini_key") || "",
+        openaiKey: localStorage.getItem("h3_openai_key") || "",
+        openaiBaseUrl: (localStorage.getItem("h3_openai_base") || "https://api.openai.com/v1").replace(/\/+$/, ""),
+        openaiModel: localStorage.getItem("h3_openai_model") || "gpt-4o",
+        cloudVideoKey: localStorage.getItem("h3_cloud_video_key") || "",
+        cloudVideoBaseUrl: (localStorage.getItem("h3_cloud_video_base") || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/+$/, ""),
+        cloudVideoModel: localStorage.getItem("h3_cloud_video_model") || "doubao-seedance-1-0-pro-250528",
+        comfyUrl: (localStorage.getItem("h3_comfy_url") || "http://127.0.0.1:8188").replace(/\/+$/, ""),
+        promptProvider: localStorage.getItem("h3_prompt_provider") || "gemini",
+        imageProvider: localStorage.getItem("h3_image_provider") || "nano-banana-2",
+      };
+    }
+
+    function saveLocalPrefs() {
+      localStorage.setItem("h3_prompt_provider", document.getElementById("promptProviderSelect").value);
+      localStorage.setItem("h3_image_provider", document.getElementById("imageProviderSelect").value);
+    }
+
+    function openSettingsModal() {
+      const p = getPrefs();
+      document.getElementById("geminiKeyInput").value = p.geminiKey;
+      document.getElementById("openaiKeyInput").value = p.openaiKey;
+      document.getElementById("openaiBaseUrlInput").value = p.openaiBaseUrl;
+      document.getElementById("openaiModelInput").value = p.openaiModel;
+      document.getElementById("cloudVideoKeyInput").value = p.cloudVideoKey;
+      document.getElementById("cloudVideoBaseUrlInput").value = p.cloudVideoBaseUrl;
+      document.getElementById("cloudVideoModelInput").value = p.cloudVideoModel;
+      document.getElementById("comfyUrlInput").value = p.comfyUrl;
+      document.getElementById("settingsDialog").showModal();
+    }
+
+    function saveSettingsModal() {
+      localStorage.setItem("h3_gemini_key", document.getElementById("geminiKeyInput").value.trim());
+      localStorage.setItem("h3_openai_key", document.getElementById("openaiKeyInput").value.trim());
+      localStorage.setItem("h3_openai_base", document.getElementById("openaiBaseUrlInput").value.trim());
+      localStorage.setItem("h3_openai_model", document.getElementById("openaiModelInput").value.trim());
+      localStorage.setItem("h3_cloud_video_key", document.getElementById("cloudVideoKeyInput").value.trim());
+      localStorage.setItem("h3_cloud_video_base", document.getElementById("cloudVideoBaseUrlInput").value.trim());
+      localStorage.setItem("h3_cloud_video_model", document.getElementById("cloudVideoModelInput").value.trim());
+      localStorage.setItem("h3_comfy_url", document.getElementById("comfyUrlInput").value.trim());
+      document.getElementById("settingsDialog").close();
+      checkComfyConnection();
+    }
+
+    function toggleTargetSecondsInput() {
+      const mode = document.getElementById("durationModeSelect").value;
+      document.getElementById("customSecondsBox").style.display = mode === "expand" ? "block" : "none";
+    }
+
+    function selectSpeed(speedKey) {
+      selectedSpeed = speedKey;
+      document.querySelectorAll(".speed-option").forEach(el => {
+        el.classList.toggle("active", el.dataset.speed === speedKey);
+      });
+    }
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleRefUpload(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      refImageMime = file.type || "image/jpeg";
+      const dataUrl = await fileToDataUrl(file);
+      refImageBase64 = dataUrl.split(",")[1];
+      const img = document.getElementById("refPreview");
+      img.src = dataUrl;
+      img.style.display = "block";
+      const icon = document.getElementById("refPlaceholderIcon");
+      if (icon) icon.style.display = "none";
+      const btnText = document.getElementById("refUploadBtnText");
+      if (btnText) btnText.textContent = "📷 載入圖片 (更換)";
+    }
+
+    async function handleGridUpload(input) {
+      if (!input.files || !input.files[0]) return;
+      const file = input.files[0];
+      gridImageBlob = file;
+      gridImageDataUrl = await fileToDataUrl(file);
+      const img = document.getElementById("gridUploadPreview");
+      if (img) {
+        img.src = gridImageDataUrl;
+        img.style.display = "block";
+      }
+      showGridPreview(gridImageDataUrl);
+    }
+
+    function sliceNineGridInBrowser(imgSrc) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const gw = img.naturalWidth || img.width;
+          const gh = img.naturalHeight || img.height;
+          const pw = Math.floor(gw / 3);
+          const ph = Math.floor(gh / 3);
+          const pad = 6;
+          const panels = {};
+          const bar = document.getElementById("slicedPanelsContainer");
+          bar.innerHTML = "";
+
+          for (let idx = 1; idx <= 9; idx++) {
+            const r = Math.floor((idx - 1) / 3);
+            const c = (idx - 1) % 3;
+            const canvas = document.createElement("canvas");
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext("2d");
+            ctx.drawImage(img, c * pw + pad, r * ph + pad, pw - pad * 2, ph - pad * 2, 0, 0, 640, 480);
+            try {
+              const panelDataUrl = canvas.toDataURL("image/png");
+              panels[idx] = panelDataUrl;
+              const item = document.createElement("div");
+              item.className = "sliced-panel-item";
+              item.innerHTML = `<img src="${panelDataUrl}" alt="Panel ${idx}" /><span>Panel ${idx}</span>`;
+              bar.appendChild(item);
+            } catch (err) {
+              const item = document.createElement("div");
+              item.className = "sliced-panel-item";
+              item.innerHTML = `<span>Panel ${idx}</span>`;
+              bar.appendChild(item);
+            }
+          }
+          slicedPanelsDataUrls = panels;
+          resolve(panels);
+        };
+        img.onerror = () => resolve({});
+        img.src = imgSrc;
+      });
+    }
+
+    function showGridPreview(dataUrl) {
+      gridImageDataUrl = dataUrl;
+      const box = document.getElementById("gridPreviewContainer");
+      const img = document.getElementById("plannedGridImg");
+      const dl = document.getElementById("downloadGridLink");
+      img.src = dataUrl;
+      dl.href = dataUrl;
+      box.style.display = "block";
+      sliceNineGridInBrowser(dataUrl);
+    }
+
+    async function dataUrlToBlob(dataUrl) {
+      const res = await fetch(dataUrl);
+      return await res.blob();
+    }
+
+    async function checkComfyConnection() {
+      const badge = document.getElementById("comfyStatusBadge");
+      const { comfyUrl } = getPrefs();
+      try {
+        const res = await fetch(`${comfyUrl}/system_stats`, { method: "GET" });
+        if (res.ok) {
+          badge.className = "badge ok";
+          badge.textContent = `🟢 本地 ComfyUI 已連線 (${comfyUrl})`;
+          return true;
+        }
+      } catch (e) {}
+      badge.className = "badge warn";
+      badge.textContent = `⚪ 本地 ComfyUI 未啟動 (點此重試或雙擊一鍵啟動)`;
+      return false;
+    }
+
+    // ==================== Step 1: AI Prompt & Grid Generation ====================
+    function buildDirectorSystemPrompt(durationMode, targetSeconds) {
+      if (typeof H3PromptBuilder !== "undefined" && H3PromptBuilder.buildDirectorSystemPrompt) {
+        return H3PromptBuilder.buildDirectorSystemPrompt(durationMode, targetSeconds);
+      }
+      const durationInstruction = durationMode === "expand"
+        ? `The user explicitly requested a total video duration of ${targetSeconds} seconds (${Math.max(1, Math.round(targetSeconds / 5))} segments of 5 seconds each). You MUST expand, enrich, and pace the user's Chinese story into a rich, unhurried ${targetSeconds}-second screenplay consisting of exactly ${Math.max(1, Math.round(targetSeconds / 5))} sequential 5-second segments!`
+        : `Analyze the user's Chinese story complexity, actions, and dialogue length, and freely determine the optimal total duration in seconds (must be a multiple of 5, e.g., 5, 10, 15, 20, 25, 30, etc. — do NOT artificially cap at 15s if the plot needs 20s or 25s!). Create N = recommended_total_seconds / 5 sequential 5-second segments so no segment feels rushed.`;
+
+      return `You are an expert AI Film Director specializing in First/Last-Frame Chained Video Generation.
+The user provides a character/setting reference image and a creative story description in Chinese.
+
+YOUR TASKS & WORKFLOW:
+1. ${durationInstruction}
+2. 3x3 Storyboard Contact Sheet (9 Key Milestones):
+   - Plan a 3x3 nine-panel photo grid (Panel 1 to Panel 9, read left-to-right, top-to-bottom: Row 1 = Panels 1, 2, 3; Row 2 = Panels 4, 5, 6; Row 3 = Panels 7, 8, 9).
+   - Write \`grid_image_prompt\` in English to generate this 3x3 photo grid (thin white lines only, strictly NO text, NO captions, NO subtitles anywhere in image) maintaining exact character identity and scene atmosphere from the reference image.
+3. Sequential 5-Second Segments (Chained Storyboard Video Prompts):
+   - For EACH segment (Segment 1 to Segment N):
+     A. \`title\` (Chinese Milestone Summary): MUST be in Traditional Chinese (繁體中文), stating the part number, timecode, and a clear story milestone summary (e.g., "Part 1 (0-5s): 甦醒伸展肩膀並開口說「坐太久活動一下」").
+     B. \`end_panel\`: The target milestone panel index in the 3x3 grid (integer from 1 to 9, monotonically increasing from Segment 1 up to 9 on the final segment).
+     C. \`prompt\` (English Cinematic Video Prompt): High-density English prompt tailored specifically for video generation models (MiniMax-H3 / Seedance):
+        - STRICT SEAMLESS CONTINUITY:
+          * Segment 1 (0-5s): Establish the character and environment from Panel 1, progressing smoothly toward Panel \`end_panel\`.
+          * Segment 2 to N: MUST explicitly start with: "Create a 5-second live-action cinematic film continuing seamlessly from the exact last frame, pose, camera angle, and lighting of the previous segment..." and transition naturally towards Panel \`end_panel\`.
+        - Visual Breakdown: Include timeline timestamps (e.g., 0-2.0s, 2.0-5.0s) describing subject action, physical motion, camera shot/angle, and subtle expressions.
+        - Chinese Spoken Dialogue: If the segment includes speech, embed \`<d>[Chinese] 台詞內容</d>\` inside BOTH the prompt timeline description AND the audio section to enable lip-syncing and authentic Mandarin speech generation.
+        - Cinematic Quality: Specify coherent motion, realistic textures, cinematic lighting, and strictly clean shots without borders or watermarks.
+
+Return ONLY valid JSON matching this schema:
+{
+  "project_slug": "short_english_slug",
+  "recommended_total_seconds": 15,
+  "reasoning_zh": "繁體中文說明：為什麼評估此秒數最適合，以及如何鋪陳起承轉合",
+  "expanded_story_zh": "擴寫後的完整繁體中文分鏡故事大綱",
+  "grid_image_prompt": "A seamless 3x3 nine-panel photo grid...",
+  "segments": [
+    {
+      "title": "Part 1 (0-5s): 繁體中文段落標題與情節說明",
+      "end_panel": 3,
+      "prompt": "Create a 5-second live-action cinematic film... Timeline: 0-2.0s... 2.0-5.0s... Audio: ... spoken dialogue: <d>[Chinese] 台詞</d>."
+    }
+  ]
+}`;
+    }
+
+    async function callPlanViaGemini(apiKey, modelName, systemPrompt, chineseDesc) {
+      const inputArr = [];
+      if (refImageBase64) {
+        inputArr.push({ type: "image", mime_type: refImageMime, data: refImageBase64 });
+      }
+      inputArr.push({ type: "text", text: `使用者中文描述：${chineseDesc}` });
+
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+          "Api-Revision": "2026-05-20",
+        },
+        body: JSON.stringify({
+          model: modelName,
+          system_instruction: systemPrompt,
+          input: inputArr,
+          response_format: { type: "text", mime_type: "application/json" },
+        }),
+      });
+      if (!res.ok) throw new Error(`Gemini API 錯誤 (${res.status}): ${await res.text()}`);
+      const data = await res.json();
+      let text = data.output_text || "";
+      if (!text && data.steps) {
+        for (const s of data.steps) {
+          if (s.type === "model_output" && s.content) {
+            for (const c of s.content) {
+              if (c.type === "text" && c.text) text += c.text;
+            }
+          }
+        }
+      }
+      return JSON.parse(text.replace(/^```json\s*|\s*```$/g, "").trim());
+    }
+
+    async function callPlanViaOpenAI(apiKey, baseUrl, modelName, systemPrompt, chineseDesc) {
+      const userContent = [];
+      if (refImageBase64) {
+        userContent.push({
+          type: "image_url",
+          image_url: { url: `data:${refImageMime};base64,${refImageBase64}` },
+        });
+      }
+      userContent.push({ type: "text", text: `使用者中文描述：${chineseDesc}` });
+
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: modelName,
+          response_format: { type: "json_object" },
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userContent },
+          ],
+        }),
+      });
+      if (!res.ok) throw new Error(`OpenAI API 錯誤 (${res.status}): ${await res.text()}`);
+      const data = await res.json();
+      const text = data.choices[0].message.content;
+      return JSON.parse(text.replace(/^```json\s*|\s*```$/g, "").trim());
+    }
+
+    async function generateGridViaNanoBanana(apiKey, modelName, gridPrompt) {
+      const inputArr = [];
+      if (refImageBase64) {
+        inputArr.push({ type: "image", mime_type: refImageMime, data: refImageBase64 });
+      }
+      inputArr.push({ type: "text", text: gridPrompt });
+
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+          "Api-Revision": "2026-05-20",
+        },
+        body: JSON.stringify({
+          model: modelName,
+          input: inputArr,
+          response_format: { type: "image", aspect_ratio: "4:3" },
+        }),
+      });
+      if (!res.ok) throw new Error(`Nano Banana 生圖錯誤 (${res.status}): ${await res.text()}`);
+      const data = await res.json();
+      if (data.output_image && data.output_image.data) {
+        const mime = data.output_image.mime_type || "image/png";
+        return `data:${mime};base64,${data.output_image.data}`;
+      }
+      if (data.steps) {
+        for (const s of data.steps) {
+          if (s.type === "model_output" && s.content) {
+            for (const c of s.content) {
+              if (c.type === "image" && c.data) return `data:${c.mime_type || "image/png"};base64,${c.data}`;
+            }
+          }
+        }
+      }
+      throw new Error("Nano Banana 未回傳影像資料");
+    }
+
+    async function generateGridViaOpenAI(apiKey, baseUrl, gridPrompt) {
+      const res = await fetch(`${baseUrl}/images/generations`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: "gpt-image-1",
+          prompt: gridPrompt,
+          size: "1536x1024",
+          quality: "high",
+        }),
+      });
+      if (!res.ok) throw new Error(`OpenAI Image API 錯誤 (${res.status}): ${await res.text()}`);
+      const data = await res.json();
+      const item = data.data[0];
+      if (item.b64_json) return `data:image/png;base64,${item.b64_json}`;
+      if (item.url) return item.url;
+      throw new Error("OpenAI Image API 未回傳影像");
+    }
+
+    async function executeStep1() {
+      const prefs = getPrefs();
+      const promptProv = document.getElementById("promptProviderSelect").value;
+      const imageProv = document.getElementById("imageProviderSelect").value;
+      const desc = document.getElementById("chineseDesc").value.trim();
+      const durationMode = document.getElementById("durationModeSelect").value;
+      const targetSec = parseInt(document.getElementById("targetSecondsInput").value, 10) || 15;
+      const statusEl = document.getElementById("planStatusMsg");
+      const btn = document.getElementById("planBtn");
+
+      if (!desc) {
+        statusEl.style.color = "var(--danger)";
+        statusEl.textContent = "❌ 請先輸入中文情節描述";
+        return;
+      }
+
+      btn.disabled = true;
+      try {
+        statusEl.style.color = "var(--muted)";
+        statusEl.textContent = "⏳ 正在分析情節、規劃最佳秒數與每段 5 秒分鏡腳本...";
+        const sysPrompt = buildDirectorSystemPrompt(durationMode, targetSec);
+
+        let plan;
+        if (promptProv.startsWith("gemini")) {
+          if (!prefs.geminiKey) {
+            openSettingsModal();
+            throw new Error("請先在設定視窗填入 Google Gemini API Key");
+          }
+          const model = promptProv === "gemini-pro" ? "gemini-3.1-pro-preview" : "gemini-3.8-flash";
+          plan = await callPlanViaGemini(prefs.geminiKey, model, sysPrompt, desc);
+        } else {
+          if (!prefs.openaiKey) {
+            openSettingsModal();
+            throw new Error("請先在設定視窗填入 OpenAI API Key");
+          }
+          plan = await callPlanViaOpenAI(prefs.openaiKey, prefs.openaiBaseUrl, prefs.openaiModel, sysPrompt, desc);
+        }
+
+        if (imageProv !== "manual") {
+          statusEl.textContent = "🎨 正在根據分鏡腳本生成無字邊框 3×3 九宮格分鏡圖...";
+          let dataUrl;
+          if (imageProv.startsWith("nano-banana")) {
+            if (!prefs.geminiKey) {
+              openSettingsModal();
+              throw new Error("請先填入 Gemini API Key 以使用 Nano Banana 生圖");
+            }
+            const imgModel = imageProv === "nano-banana-pro" ? "gemini-3-pro-image" : "gemini-3.1-flash-image";
+            dataUrl = await generateGridViaNanoBanana(prefs.geminiKey, imgModel, plan.grid_image_prompt);
+          } else {
+            if (!prefs.openaiKey) {
+              openSettingsModal();
+              throw new Error("請先填入 OpenAI API Key 以使用 OpenAI Image 生圖");
+            }
+            dataUrl = await generateGridViaOpenAI(prefs.openaiKey, prefs.openaiBaseUrl, plan.grid_image_prompt);
+          }
+          showGridPreview(dataUrl);
+          gridImageBlob = await dataUrlToBlob(dataUrl);
+        }
+
+        renderPlanUI(plan);
+        statusEl.style.color = "var(--success)";
+        statusEl.textContent = `✅ 步驟一完成！已自動產出 ${plan.segments.length * 5} 秒（共 ${plan.segments.length} 段）九宮格與腳本，請在步驟二檢視與微調。`;
+
+        // Smooth scroll to Step 2
+        document.getElementById("step2Card").scrollIntoView({ behavior: "smooth" });
+      } catch (err) {
+        statusEl.style.color = "var(--danger)";
+        if (typeof H3CloudDiagnostics !== "undefined") {
+          const diag = H3CloudDiagnostics.diagnoseNetworkError(err, { service: promptProv });
+          statusEl.innerHTML = `❌ <strong>${diag.title}</strong>：${diag.reason}${diag.action ? `<div style="margin-top:4px; font-size:0.8rem; color:#fde047;">👉 ${diag.action}</div>` : ''}`;
+        } else {
+          statusEl.textContent = `❌ ${err.message}`;
+        }
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    // ==================== Step 2: Render & Edit Segments ====================
+    function renderPlanUI(plan) {
+      currentPlan = plan;
+      updateDurationBadge();
+
+      const expBox = document.getElementById("expandedStoryBox");
+      expBox.style.display = "block";
+      expBox.innerHTML = `<div><strong>💡 秒數評估說明：</strong>${plan.reasoning_zh || ""}</div>` +
+        (plan.expanded_story_zh ? `<div style="margin-top:6px; color:#93c5fd;"><strong>📖 完整分鏡大綱：</strong>${plan.expanded_story_zh}</div>` : "");
+
+      const container = document.getElementById("segmentsContainer");
+      container.innerHTML = "";
+      (plan.segments || []).forEach((seg, idx) => {
+        appendSegmentCardDOM(seg, idx);
+      });
+    }
+
+    function renderMiniGridHTML(selectedPanel) {
+      let cells = "";
+      for (let p = 1; p <= 9; p++) {
+        const isActive = Number(selectedPanel) === p ? "active" : "";
+        cells += `<div class="mini-grid-cell ${isActive}"></div>`;
+      }
+      return `<div class="mini-grid-indicator" title="目前鎖定 Panel ${selectedPanel}（1~9：由左至右、由上至下）">${cells}</div>`;
+    }
+
+    function onPanelSelectChange(selectEl) {
+      const panel = parseInt(selectEl.value, 10);
+      const container = selectEl.parentElement.querySelector(".mini-grid-indicator");
+      if (container) {
+        const cells = container.querySelectorAll(".mini-grid-cell");
+        cells.forEach((cell, i) => {
+          cell.classList.toggle("active", i + 1 === panel);
+        });
+        container.title = `目前鎖定 Panel ${panel}（1~9：由左至右、由上至下）`;
+      }
+      syncSegmentsFromDOM();
+    }
+
+    function appendSegmentCardDOM(seg, idx) {
+      const container = document.getElementById("segmentsContainer");
+      const div = document.createElement("div");
+      div.className = "segment-card";
+      const startSec = idx * 5;
+      const endSec = (idx + 1) * 5;
+      const chainText = idx === 0 ? "首幀：九宮格 / Panel 1" : `首幀：自動接續 Part ${idx} 尾幀`;
+      div.innerHTML = `
+        <div class="segment-card-header">
+          <span>🎬 <input type="text" class="seg-title-input" value="${seg.title || `Part ${idx + 1} (${startSec}-${endSec}s)`}" style="width:340px; display:inline-block; padding:4px 8px; font-size:0.84rem;" /></span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:0.75rem; color:var(--muted);">${chainText} → 目標尾幀：</span>
+            <div style="display:inline-flex; align-items:center; gap:5px;">
+              ${renderMiniGridHTML(seg.end_panel || 9)}
+              <select class="seg-panel-select" onchange="onPanelSelectChange(this)" style="width:95px; padding:4px 6px; font-size:0.8rem;">
+                ${[1,2,3,4,5,6,7,8,9].map(n => `<option value="${n}" ${Number(seg.end_panel) === n ? "selected" : ""}>Panel ${n}</option>`).join("")}
+              </select>
+            </div>
+            <button type="button" onclick="removeSegmentCard(this)" style="padding:3px 8px; font-size:0.75rem; color:var(--danger);">🗑️ 刪除</button>
+          </div>
+        </div>
+        <textarea class="seg-prompt-input" rows="4">${seg.prompt || ""}</textarea>
+      `;
+      container.appendChild(div);
+    }
+
+    function addSegmentCard() {
+      if (!currentPlan) {
+        currentPlan = { project_slug: "custom_story", segments: [] };
+        document.getElementById("segmentsContainer").innerHTML = "";
+      }
+      const nextIdx = document.querySelectorAll("#segmentsContainer .segment-card").length;
+      const totalEstimated = nextIdx + 1;
+      const defaultPanel = typeof H3TimecodeHelper !== "undefined"
+        ? H3TimecodeHelper.calculateDefaultEndPanel(nextIdx, totalEstimated)
+        : Math.min(9, (nextIdx + 1) * 3);
+      const defaultTitle = typeof H3TimecodeHelper !== "undefined"
+        ? H3TimecodeHelper.formatSegmentTitle(nextIdx)
+        : `Part ${nextIdx + 1} (${nextIdx * 5}-${(nextIdx + 1) * 5}s)`;
+
+      appendSegmentCardDOM({
+        title: defaultTitle,
+        end_panel: defaultPanel,
+        prompt: "Create a 5-second live-action cinematic film continuing seamlessly from the first frame to the last frame.",
+      }, nextIdx);
+      syncSegmentsFromDOM();
+    }
+
+    function removeSegmentCard(btnEl) {
+      btnEl.closest(".segment-card").remove();
+      syncSegmentsFromDOM();
+    }
+
+    function syncSegmentsFromDOM() {
+      if (!currentPlan) return [];
+      const cards = document.querySelectorAll("#segmentsContainer .segment-card");
+      const segs = [];
+      cards.forEach((card, i) => {
+        segs.push({
+          title: card.querySelector(".seg-title-input").value.trim() || `Part ${i + 1}`,
+          end_panel: parseInt(card.querySelector(".seg-panel-select").value, 10) || 9,
+          prompt: card.querySelector(".seg-prompt-input").value.trim(),
+        });
+      });
+      currentPlan.segments = segs;
+      updateDurationBadge();
+      return segs;
+    }
+
+    function updateDurationBadge() {
+      const count = document.querySelectorAll("#segmentsContainer .segment-card").length || (currentPlan?.segments?.length || 0);
+      const totalSec = typeof H3TimecodeHelper !== "undefined"
+        ? H3TimecodeHelper.calculateTotalSeconds(count)
+        : count * 5;
+      const b2 = document.getElementById("totalDurationBadge");
+      if (b2) b2.textContent = `共 ${count} 段，總長 ${totalSec} 秒`;
+
+      const b4 = document.getElementById("step4SegmentsBadge");
+      if (b4) b4.textContent = `共 ${count} 段個別影片 ＋ 1 支完整彙整總片`;
+    }
+
+    function confirmStep2AndProceed() {
+      const segs = syncSegmentsFromDOM();
+      if (!segs.length) {
+        alert("請先至少保留或新增 1 個分鏡段落！");
+        return;
+      }
+      document.getElementById("step3Card").scrollIntoView({ behavior: "smooth" });
+    }
+
+    async function replanCurrentSegmentsViaAI() {
+      const segs = syncSegmentsFromDOM();
+      const count = segs.length || 3;
+      const currentSeconds = Math.max(5, count * 5);
+      const desc = document.getElementById("chineseDesc").value.trim();
+      const prefs = getPrefs();
+      const promptProv = document.getElementById("promptProviderSelect").value;
+      const replanBtn = document.getElementById("replanBtn");
+
+      if (!desc) {
+        alert("請先在步驟一輸入原始的「中文情節描述」！");
+        document.getElementById("chineseDesc").focus();
+        return;
+      }
+
+      const confirmMsg = `AI 即將參考原始中文情節描述，依當前修改後總秒數【${currentSeconds} 秒（共 ${count} 段）】重新規劃分鏡劇情與各段 Prompt。\n\n是否繼續？`;
+      if (!confirm(confirmMsg)) return;
+
+      replanBtn.disabled = true;
+      const originalText = replanBtn.textContent;
+      replanBtn.textContent = `⏳ AI 重新規劃 ${currentSeconds}s 劇本中...`;
+
+      try {
+        const sysPrompt = buildDirectorSystemPrompt("expand", currentSeconds);
+        let plan;
+        if (promptProv.startsWith("gemini")) {
+          if (!prefs.geminiKey) {
+            openSettingsModal();
+            throw new Error("請先在設定視窗填入 Google Gemini API Key");
+          }
+          const model = promptProv === "gemini-pro" ? "gemini-3.1-pro-preview" : "gemini-3.8-flash";
+          plan = await callPlanViaGemini(prefs.geminiKey, model, sysPrompt, desc);
+        } else {
+          if (!prefs.openaiKey) {
+            openSettingsModal();
+            throw new Error("請先在設定視窗填入 OpenAI API Key");
+          }
+          plan = await callPlanViaOpenAI(prefs.openaiKey, prefs.openaiBaseUrl, prefs.openaiModel, sysPrompt, desc);
+        }
+
+        if (plan && plan.segments && plan.segments.length > 0) {
+          if (currentPlan) {
+            currentPlan.reasoning_zh = plan.reasoning_zh;
+            currentPlan.expanded_story_zh = plan.expanded_story_zh;
+            currentPlan.segments = plan.segments;
+          } else {
+            currentPlan = plan;
+          }
+          renderPlanUI(currentPlan);
+          alert(`✅ 已成功依 ${currentSeconds} 秒重新規劃 ${plan.segments.length} 段分鏡腳本！\n步驟四影片段落數亦已同步更新。`);
+        } else {
+          throw new Error("AI 回傳的腳本結構不完整，請重試");
+        }
+      } catch (err) {
+        alert(`❌ 重設分鏡失敗：${err.message}`);
+      } finally {
+        replanBtn.disabled = false;
+        replanBtn.textContent = originalText;
+      }
+    }
+
+    // ==================== Step 3A: Local ComfyUI Generation ====================
+    function buildComfyApiPrompt(uploadedGridFilename, segments, speedCfg, outputPrefix) {
+      if (typeof H3ComfyPayload !== "undefined" && H3ComfyPayload.buildComfyApiPrompt) {
+        return H3ComfyPayload.buildComfyApiPrompt(uploadedGridFilename, segments, speedCfg, outputPrefix, SHISA_DEFAULT_CONFIG);
+      }
+      return {
+        "3": {
+          "class_type": "LoadImage",
+          "inputs": { "image": uploadedGridFilename },
+          "_meta": { "title": "Load 3x3 Storyboard Grid" }
+        },
+        "1": {
+          "class_type": "H3ChainedStoryboardVideo",
+          "inputs": {
+            "storyboard_grid": ["3", 0],
+            "segments_json": JSON.stringify(segments, null, 2),
+            "width": SHISA_DEFAULT_CONFIG.width,
+            "height": SHISA_DEFAULT_CONFIG.height,
+            "frames": SHISA_DEFAULT_CONFIG.frames,
+            "steps": speedCfg.steps,
+            "layers": speedCfg.layers,
+            "reuse": speedCfg.reuse,
+            "core_reuse": speedCfg.core_reuse,
+            "token_reduction": speedCfg.token_reduction,
+            "render_width": speedCfg.render_width,
+            "render_height": speedCfg.render_height,
+            "seed": SHISA_DEFAULT_CONFIG.seed,
+            "ssd_streaming": true
+          },
+          "_meta": { "title": "H3 Chained Storyboard Video" }
+        },
+        "2": {
+          "class_type": "SaveVideo",
+          "inputs": {
+            "filename_prefix": outputPrefix,
+            "format": "mp4",
+            "format.codec": "auto",
+            "codec": "auto",
+            "video": ["1", 0]
+          },
+          "_meta": { "title": "Save Final Merged Video" }
+        }
+      };
+    }
+
+    function downloadComfyWorkflowJson() {
+      const segs = syncSegmentsFromDOM();
+      const speedCfg = SPEED_CONFIGS[selectedSpeed];
+      const slug = currentPlan?.project_slug || "okinawa_shisa";
+      const apiPrompt = buildComfyApiPrompt("okinawa_shisa_9grid.png", segs, speedCfg, `${slug}/${slug}_${segs.length * 5}s_story`);
+      const blob = new Blob([JSON.stringify(apiPrompt, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${slug}_${segs.length * 5}s_comfy_api.json`;
+      a.click();
+    }
+
+    async function executeLocalComfyStep() {
+      const segs = syncSegmentsFromDOM();
+      if (!segs.length) {
+        alert("請先在步驟一產出或新增至少 1 個分鏡段落");
+        return;
+      }
+
+      const { comfyUrl } = getPrefs();
+      const isOnline = await checkComfyConnection();
+      if (!isOnline) {
+        const diag = typeof H3CloudDiagnostics !== "undefined"
+          ? H3CloudDiagnostics.diagnoseNetworkError(new Error("ComfyUI offline"), { url: comfyUrl, service: "comfyui" })
+          : null;
+        alert(`❌ ${diag ? diag.title : '無法連線至本地 ComfyUI'}\n\n原因：${diag ? diag.reason : '服務未啟動'}\n\n👉 建議作法：${diag ? diag.action : '請執行一鍵啟動腳本'}`);
+        return;
+      }
+
+      const startBtn = document.getElementById("startLocalVideoBtn");
+      startBtn.disabled = true;
+
+      try {
+        let uploadedGridName = currentPlan?.grid_image_name || SHISA_DEFAULT_CONFIG.grid_image_name;
+        if (gridImageBlob) {
+          const form = new FormData();
+          form.append("image", gridImageBlob, `studio_9grid_${Date.now()}.png`);
+          form.append("overwrite", "true");
+          const upRes = await fetch(`${comfyUrl}/upload/image`, { method: "POST", body: form });
+          if (upRes.ok) {
+            const upData = await upRes.json();
+            uploadedGridName = upData.name;
+          }
+        }
+
+        const speedCfg = SPEED_CONFIGS[selectedSpeed];
+        const slug = currentPlan?.project_slug || "okinawa_shisa";
+        const outputPrefix = `${slug}/${slug}_${segs.length * 5}s_story`;
+        const apiPrompt = buildComfyApiPrompt(uploadedGridName, segs, speedCfg, outputPrefix);
+
+        const qRes = await fetch(`${comfyUrl}/prompt`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: apiPrompt }),
+        });
+        if (!qRes.ok) throw new Error(`ComfyUI /prompt 錯誤: ${await qRes.text()}`);
+        const qData = await qRes.json();
+        const promptId = qData.prompt_id;
+
+        document.getElementById("jobProgressPanel").style.display = "block";
+        document.getElementById("jobStageText").textContent = `已送入本地 ComfyUI 佇列 (共 ${segs.length} 段 / ${segs.length * 5} 秒)...`;
+        const startTime = Date.now();
+
+        if (comfyPollTimer) clearInterval(comfyPollTimer);
+        comfyPollTimer = setInterval(async () => {
+          const elapsed = Math.floor((Date.now() - startTime) / 1000);
+          document.getElementById("jobTimerBadge").textContent = `⏱️ 本地執行 ${Math.floor(elapsed / 60)}分 ${elapsed % 60}秒`;
+          try {
+            const hRes = await fetch(`${comfyUrl}/history/${promptId}`);
+            if (!hRes.ok) return;
+            const hist = await hRes.json();
+            if (hist[promptId]) {
+              clearInterval(comfyPollTimer);
+              const outputs = hist[promptId].outputs || {};
+              for (const nodeId of Object.keys(outputs)) {
+                const nodeOut = outputs[nodeId];
+                const items = nodeOut.videos || nodeOut.gifs || nodeOut.images || [];
+                if (items.length > 0) {
+                  const vid = items[0];
+                  const viewUrl = `${comfyUrl}/view?filename=${encodeURIComponent(vid.filename)}&subfolder=${encodeURIComponent(vid.subfolder || "")}&type=${encodeURIComponent(vid.type || "output")}`;
+                  document.getElementById("jobProgressBar").style.width = "100%";
+                  document.getElementById("jobStageText").textContent = "✅ 本地影片生成與多段拼接完成！";
+                  document.getElementById("jobPercentText").textContent = "100%";
+                  playVideoInStage(viewUrl, `🎬 ${vid.subfolder ? vid.subfolder + "/" : ""}${vid.filename}`);
+                  document.getElementById("step4Card").scrollIntoView({ behavior: "smooth" });
+                }
+              }
+              startBtn.disabled = false;
+            }
+          } catch (e) {}
+        }, 3000);
+      } catch (err) {
+        alert(`執行失敗：${err.message}`);
+        startBtn.disabled = false;
+      }
+    }
+
+    // ==================== Step 3B: Cloud Seedance Generation ====================
+    async function callCloudVideoSegment(provider, prefs, promptText, firstFrameDataUrl, lastFrameDataUrl) {
+      if (!prefs.cloudVideoKey) {
+        openSettingsModal();
+        throw new Error("請先填入雲端影片 API Key");
+      }
+
+      if (provider === "cloud-seedance") {
+        const contentArr = [
+          { type: "text", text: `${promptText} --duration 5` }
+        ];
+        if (firstFrameDataUrl) {
+          contentArr.push({ type: "image_url", image_url: { url: firstFrameDataUrl }, role: "first_frame" });
+        }
+        if (lastFrameDataUrl) {
+          contentArr.push({ type: "image_url", image_url: { url: lastFrameDataUrl }, role: "last_frame" });
+        }
+
+        const createRes = await fetch(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${prefs.cloudVideoKey}`,
+          },
+          body: JSON.stringify({
+            model: prefs.cloudVideoModel || "doubao-seedance-1-0-pro-250528",
+            content: contentArr,
+          }),
+        });
+        if (!createRes.ok) throw new Error(`Seedance 建立任務失敗 (${createRes.status}): ${await createRes.text()}`);
+        const createData = await createRes.json();
+        const taskId = createData.id;
+
+        while (true) {
+          await new Promise(r => setTimeout(r, 4000));
+          const pollRes = await fetch(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks/${taskId}`, {
+            headers: { "Authorization": `Bearer ${prefs.cloudVideoKey}` },
+          });
+          if (!pollRes.ok) continue;
+          const pollData = await pollRes.json();
+          if (pollData.status === "succeeded") {
+            return pollData.content?.video_url || pollData.video_url;
+          }
+          if (pollData.status === "failed" || pollData.status === "cancelled") {
+            throw new Error(`Seedance 任務失敗: ${JSON.stringify(pollData.error || pollData)}`);
+          }
+        }
+      }
+
+      if (provider === "cloud-fal") {
+        const modelPath = prefs.cloudVideoModel.includes("/") ? prefs.cloudVideoModel : "fal-ai/bytedance/seedance/v1/pro/image-to-video";
+        const createRes = await fetch(`https://queue.fal.run/${modelPath}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Key ${prefs.cloudVideoKey}`,
+          },
+          body: JSON.stringify({
+            prompt: promptText,
+            image_url: firstFrameDataUrl,
+            end_image_url: lastFrameDataUrl,
+            duration: "5",
+          }),
+        });
+        if (!createRes.ok) throw new Error(`fal.ai 建立任務失敗: ${await createRes.text()}`);
+        const qData = await createRes.json();
+        while (true) {
+          await new Promise(r => setTimeout(r, 4000));
+          const sRes = await fetch(qData.status_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
+          if (!sRes.ok) continue;
+          const sData = await sRes.json();
+          if (sData.status === "COMPLETED") {
+            const finalRes = await fetch(qData.response_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
+            const finalData = await finalRes.json();
+            return finalData.video?.url || finalData.video_url;
+          }
+          if (sData.status === "FAILED") throw new Error("fal.ai 任務失敗");
+        }
+      }
+
+      // Fallback OpenAPI
+      const createRes = await fetch(`${prefs.cloudVideoBaseUrl}/video/generations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${prefs.cloudVideoKey}` },
+        body: JSON.stringify({
+          model: prefs.cloudVideoModel,
+          prompt: promptText,
+          image: firstFrameDataUrl,
+          first_frame_image: firstFrameDataUrl,
+          last_frame_image: lastFrameDataUrl,
+          duration: 5,
+        }),
+      });
+      if (!createRes.ok) throw new Error(`雲端 Video API 錯誤: ${await createRes.text()}`);
+      const createData = await createRes.json();
+      return createData.data?.[0]?.url || createData.video_url;
+    }
+
+    async function executeCloudVideoStep() {
+      const segs = syncSegmentsFromDOM();
+      if (!segs.length) {
+        alert("請先在步驟一產出或新增至少 1 個分鏡段落");
+        return;
+      }
+      const provider = document.getElementById("cloudProviderSelect").value;
+      const chainMode = document.getElementById("cloudChainModeSelect").value;
+      const prefs = getPrefs();
+      const startBtn = document.getElementById("startCloudVideoBtn");
+      startBtn.disabled = true;
+
+      document.getElementById("jobProgressPanel").style.display = "block";
+      document.getElementById("jobProgressBar").style.width = "10%";
+      document.getElementById("jobStageText").textContent = `☁️ 正在調用雲端 API (${prefs.cloudVideoModel}) 並行生成 ${segs.length} 段影片...`;
+
+      try {
+        const clipUrls = [];
+        if (chainMode === "panel-anchor") {
+          const tasks = segs.map((seg, idx) => {
+            const startPanelIdx = idx === 0 ? 1 : (segs[idx - 1].end_panel || 3);
+            const endPanelIdx = seg.end_panel || Math.min(9, (idx + 1) * 3);
+            const firstFrame = slicedPanelsDataUrls[startPanelIdx] || gridImageDataUrl;
+            const lastFrame = slicedPanelsDataUrls[endPanelIdx] || "";
+            return callCloudVideoSegment(provider, prefs, seg.prompt, firstFrame, lastFrame);
+          });
+          const results = await Promise.all(tasks);
+          clipUrls.push(...results);
+        } else {
+          let prevLastFrame = slicedPanelsDataUrls[1] || gridImageDataUrl;
+          for (let i = 0; i < segs.length; i++) {
+            document.getElementById("jobStageText").textContent = `☁️ 正在雲端生成第 ${i + 1}/${segs.length} 段...`;
+            const targetLast = slicedPanelsDataUrls[segs[i].end_panel || 9] || "";
+            const url = await callCloudVideoSegment(provider, prefs, segs[i].prompt, prevLastFrame, targetLast);
+            clipUrls.push(url);
+            prevLastFrame = targetLast || prevLastFrame;
+          }
+        }
+
+        document.getElementById("jobProgressBar").style.width = "100%";
+        document.getElementById("jobStageText").textContent = `✅ 雲端 ${clipUrls.length} 段影片全部生成完畢！`;
+        document.getElementById("jobPercentText").textContent = "100%";
+
+        renderSegmentsPlaylist(segs.map((s, i) => ({ title: s.title, url: clipUrls[i] })));
+        playVideoInStage(clipUrls[0], `☁️ ${segs[0].title}`);
+        document.getElementById("step4Card").scrollIntoView({ behavior: "smooth" });
+      } catch (err) {
+        if (typeof H3CloudDiagnostics !== "undefined") {
+          const diag = H3CloudDiagnostics.diagnoseNetworkError(err, { url: prefs.cloudVideoBaseUrl, service: provider });
+          alert(`❌ ${diag.title}\n\n原因：${diag.reason}\n\n👉 建議作法：${diag.action}`);
+        } else {
+          alert(`雲端生成失敗：${err.message}`);
+        }
+      } finally {
+        startBtn.disabled = false;
+      }
+    }
+
+    // ==================== Step 4: Playback, Seamless Player & In-Browser Merge ====================
+    function playVideoInStage(url, labelText) {
+      const player = document.getElementById("mainVideoPlayer");
+      player.src = url;
+      player.load();
+      player.play().catch(() => {});
+      document.getElementById("currentVideoLabel").textContent = labelText;
+      const dl = document.getElementById("downloadVideoBtn");
+      dl.href = url;
+      dl.style.display = "inline-flex";
+    }
+
+    function toggleSeamlessPlayback() {
+      if (!currentPlaylist.length) return;
+      isSeamlessPlaying = true;
+      seamlessIndex = 0;
+      const btn = document.getElementById("seamlessPlayBtn");
+      btn.textContent = "⏸️ 正在無縫全片連播中...";
+      playVideoInStage(currentPlaylist[0].url, `▶️ 連播中 (第 1/${currentPlaylist.length} 段)：${currentPlaylist[0].title}`);
+    }
+
+    async function mergeAndDownloadCloudClips() {
+      if (!currentPlaylist.length) {
+        alert("目前沒有分段影片清單可合併");
+        return;
+      }
+      if (currentPlaylist.length === 1 || currentPlaylist[0].title.includes("完整合併總影片")) {
+        const a = document.createElement("a");
+        a.href = currentPlaylist[0].url;
+        a.download = "shisa_15s_story_merged.mp4";
+        a.click();
+        return;
+      }
+
+      const btn = document.getElementById("browserMergeBtn");
+      btn.disabled = true;
+      btn.textContent = "⏳ 正在前端記憶體串接錄製中...";
+
+      const statusBox = document.getElementById("jobStageText");
+      document.getElementById("jobProgressPanel").style.display = "block";
+      document.getElementById("jobProgressBar").style.width = "20%";
+
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = 640;
+        canvas.height = 480;
+        const ctx = canvas.getContext("2d");
+        const stream = canvas.captureStream(30);
+
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: MediaRecorder.isTypeSupported("video/webm;codecs=vp9") ? "video/webm;codecs=vp9" : "video/webm"
+        });
+
+        const chunks = [];
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) chunks.push(e.data);
+        };
+
+        const recordPromise = new Promise((resolve) => {
+          mediaRecorder.onstop = () => {
+            const blob = new Blob(chunks, { type: "video/webm" });
+            resolve(blob);
+          };
+        });
+
+        mediaRecorder.start();
+
+        const hiddenVid = document.createElement("video");
+        hiddenVid.crossOrigin = "anonymous";
+        hiddenVid.muted = true;
+        hiddenVid.playsInline = true;
+
+        for (let i = 0; i < currentPlaylist.length; i++) {
+          const clip = currentPlaylist[i];
+          statusBox.textContent = `🎬 前端正在依序串接第 ${i + 1}/${currentPlaylist.length} 段 (${clip.title})...`;
+          document.getElementById("jobProgressBar").style.width = `${Math.round(((i + 0.5) / currentPlaylist.length) * 100)}%`;
+
+          await new Promise((resolve) => {
+            hiddenVid.src = clip.url;
+            hiddenVid.onloadeddata = async () => {
+              try {
+                await hiddenVid.play();
+                const drawInterval = setInterval(() => {
+                  if (hiddenVid.paused || hiddenVid.ended) {
+                    clearInterval(drawInterval);
+                    resolve();
+                  } else {
+                    ctx.drawImage(hiddenVid, 0, 0, canvas.width, canvas.height);
+                  }
+                }, 1000 / 30);
+              } catch (e) {
+                resolve();
+              }
+            };
+            hiddenVid.onerror = () => resolve();
+          });
+        }
+
+        mediaRecorder.stop();
+        const finalBlob = await recordPromise;
+        const finalUrl = URL.createObjectURL(finalBlob);
+
+        document.getElementById("jobProgressBar").style.width = "100%";
+        statusBox.textContent = "✅ 前端純網頁串接合併完成！已自動觸發下載。";
+
+        const a = document.createElement("a");
+        a.href = finalUrl;
+        a.download = `merged_${currentPlan?.project_slug || "storyboard"}_full.webm`;
+        a.click();
+
+        playVideoInStage(finalUrl, "🎬 前端純網頁合併完成品 (已可播放或下載)");
+      } catch (err) {
+        alert(`前端合併失敗：${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "🎬 純前端一鍵合併 MP4";
+      }
+    }
+
+    function renderSegmentsPlaylist(items) {
+      currentPlaylist = items || [];
+      const box = document.getElementById("cloudSegmentsPlaylistBox");
+      const list = document.getElementById("cloudClipsList");
+      box.style.display = "block";
+      list.innerHTML = "";
+      currentPlaylist.forEach((item, idx) => {
+        const row = document.createElement("div");
+        row.className = "cloud-clip-item";
+        row.innerHTML = `
+          <span>🎬 ${item.title}</span>
+          <div style="display:flex; gap:6px;">
+            <button type="button" style="padding:3px 9px; font-size:0.75rem;" onclick="playVideoInStage('${item.url}', '${item.title}')">▶️ 播放此段</button>
+            <a class="btn" href="${item.url}" download style="padding:3px 9px; font-size:0.75rem;">⬇️ 下載</a>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+    }
+
+    // ==================== Default Loader ====================
+    function loadShisaDemo() {
+      const refImg = document.getElementById("refPreview");
+      refImg.src = SHISA_DEFAULT_CONFIG.ref_image_path;
+      refImg.style.display = "block";
+      const icon = document.getElementById("refPlaceholderIcon");
+      if (icon) icon.style.display = "none";
+      const btnText = document.getElementById("refUploadBtnText");
+      if (btnText) btnText.textContent = "📷 載入圖片 (更換)";
+
+      showGridPreview(SHISA_DEFAULT_CONFIG.grid_image_path);
+
+      document.getElementById("chineseDesc").value = SHISA_DEFAULT_CONFIG.chinese_desc;
+      selectSpeed("quality");
+      renderPlanUI(JSON.parse(JSON.stringify(SHISA_DEFAULT_CONFIG.plan)));
+
+      renderSegmentsPlaylist(SHISA_DEFAULT_CONFIG.part_videos);
+      playVideoInStage(
+        SHISA_DEFAULT_CONFIG.merged_video_path,
+        "🎬 預設方案 15.4 秒完整合併成果 (okinawa_shisa/shisa_15s_story_merged_00001_.mp4)"
+      );
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const p = getPrefs();
+      document.getElementById("promptProviderSelect").value = p.promptProvider;
+      document.getElementById("imageProviderSelect").value = p.imageProvider;
+      selectRoute("local");
+      checkComfyConnection();
+      loadShisaDemo();
+
+      const player = document.getElementById("mainVideoPlayer");
+      player.addEventListener("ended", () => {
+        if (isSeamlessPlaying && currentPlaylist.length > 0) {
+          seamlessIndex++;
+          if (seamlessIndex < currentPlaylist.length) {
+            playVideoInStage(currentPlaylist[seamlessIndex].url, `▶️ 連播中 (第 ${seamlessIndex + 1}/${currentPlaylist.length} 段)：${currentPlaylist[seamlessIndex].title}`);
+            player.play().catch(() => {});
+          } else {
+            isSeamlessPlaying = false;
+            document.getElementById("seamlessPlayBtn").textContent = "▶️ 連續無縫全片播放";
+            document.getElementById("currentVideoLabel").textContent = "✅ 全片連續播放完成！";
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>
