@@ -1,0 +1,17 @@
+{
+  "name": "h3-storyboard-studio",
+  "version": "1.0.0",
+  "description": "H3 Storyboard Studio - First/Last-frame chained video generation studio",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/core.test.js"
+  },
+  "keywords": [
+    "comfyui",
+    "minimax-h3",
+    "storyboard",
+    "video-generation"
+  ],
+  "author": "",
+  "license": "MIT"
+}
