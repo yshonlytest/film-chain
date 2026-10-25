@@ -617,11 +617,11 @@
       <div class="route-tabs">
         <div id="routeCardLocal" class="route-tab-card" onclick="selectRoute('local')">
           <div class="route-tab-title">
-            <span>🖥️ 本地工作流引擎 (Local Pipeline)</span>
-            <span class="badge ok" style="font-size:0.7rem;">本機算力 · 免額度</span>
+            <span>🖥️ 本地配置示範 (Local Pipeline Demo)</span>
+            <span class="badge ok" style="font-size:0.7rem;">本機算力 · Agent對齊</span>
           </div>
           <div class="route-tab-desc">
-            調用本地 ComfyUI 與 MiniMax-H3 節點進行排程生成與自動剪裁合併，完全掌控資產隱私，零雲端費用。
+            以本地 ComfyUI + MiniMax-H3 架構作為示範。因各主機硬體與外掛差異，建議搭配下方一鍵 Prompt 由 AI Agent 自主對齊安裝。
           </div>
         </div>
 
@@ -811,12 +811,33 @@
       <!-- Mode A: Local ComfyUI Panel -->
       <div id="panelLocalView">
         <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #a7f3d0;">
-          <strong>⚡ 本地渲染管線說明：</strong><br>
-          直接調用本地 ComfyUI 與 MiniMax-H3 節點進行背景逐段排程生成，首尾影格無縫銜接並由 ffmpeg 自動修剪拼接輸出。完全免費且資產不離開本機。
+          <strong>⚡ 本地配置示範說明：</strong><br>
+          本模式以本地 ComfyUI 與 MiniMax-H3 節點為示範架構，展示「九宮格錨定＋首尾幀無縫接續」在本地執行的可能流程。因不同電腦之 GPU 顯存、系統與已安裝節點互不相同，直接呼叫本機端點易有環境相容性問題。
+        </div>
+
+        <!-- 🤖 AI Agent Local Setup Prompt Card -->
+        <div style="background: #0b1120; border: 1px solid #1e293b; border-radius: 10px; padding: 14px; margin-bottom: 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; flex-wrap:wrap; gap:8px;">
+            <strong style="color:#38bdf8; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+              <span>🤖 交給 AI Agent 一鍵對齊本地環境</span>
+              <span class="info-tip">ⓘ
+                <span class="tooltip-content">
+                  複製此 Prompt 給您偏好的 Coding Agent（如 Claude Code, Antigravity, Cursor 等），Agent 會自動探測您的電腦顯卡、拉取本專案並替換為您本地真實的 ComfyUI 拓撲。
+                </span>
+              </span>
+            </strong>
+            <button type="button" id="copyAgentPromptBtn" class="btn" onclick="copyAgentPrompt()" style="padding:4px 12px; font-size:0.78rem; background:rgba(56,189,248,0.15); border-color:#38bdf8; color:#7dd3fc;">
+              📋 複製 Agent Prompt
+            </button>
+          </div>
+          <div style="font-size:0.78rem; color:#94a3b8; margin-bottom:8px; line-height:1.45;">
+            💡 建議複製以下指令發給終端機 AI Agent，讓 Agent 依據您的硬體自動部署 ComfyUI、安裝所需節點並動態適配工作流：
+          </div>
+          <textarea id="agentPromptTextarea" readonly style="width:100%; height:90px; background:#070b14; color:#e2e8f0; border:1px solid #334155; border-radius:6px; font-family:monospace; font-size:0.76rem; padding:8px; line-height:1.4; resize:vertical;">請你下載 https://github.com/yshonlytest/film-chain 並參考其「本地配置示範（路線 A）」，作為長影片銜接及製作的框架。請幫我判斷目前電腦的硬體配置（GPU 顯存、驅動與環境）是否有本地產製長影片的可能性；若可以，請幫我下載 ComfyUI 及配置相關依賴節點，並將流程中的 API 呼叫結構替換為我本機真實可運行的 ComfyUI 架構。</textarea>
         </div>
 
         <div class="form-group">
-          <label>⚡ 選擇本地渲染畫質 / 速度檔位</label>
+          <label>⚡ 選擇本地渲染畫質 / 速度檔位（本地環境已就緒時適用）</label>
           <div class="speed-options">
             <div class="speed-option active" data-speed="quality" onclick="selectSpeed('quality')">
               <h4>🎬 預設方案 (推薦 / 畫質最穩)</h4>
@@ -1069,7 +1090,7 @@
       document.getElementById("routeCardCloud").className = `route-tab-card ${!isLocal ? "active cloud" : ""}`;
 
       const badge = document.getElementById("currentRouteBadge");
-      badge.textContent = isLocal ? "目前模式：🖥️ 本地工作流引擎" : "目前模式：⚡ 雲端極速渲染引擎";
+      badge.textContent = isLocal ? "目前模式：🖥️ 本地配置示範" : "目前模式：⚡ 雲端極速渲染引擎";
       badge.className = `badge ${isLocal ? "ok" : "warn"}`;
 
       // Update Step 3 View
@@ -1079,14 +1100,35 @@
       const step3Title = document.getElementById("step3TitleText");
       const step3Tag = document.getElementById("step3RouteTag");
       if (isLocal) {
-        step3Title.textContent = "步驟三：本地管線渲染與自動合併";
-        step3Tag.textContent = "本地工作流模式";
+        step3Title.textContent = "步驟三：本地配置示範（ComfyUI 架構與 Agent 對齊）";
+        step3Tag.textContent = "本地示範模式";
         step3Tag.className = "badge ok";
       } else {
         step3Title.textContent = "步驟三：雲端並行渲染與片段生成";
         step3Tag.textContent = "雲端渲染模式";
         step3Tag.className = "badge warn";
       }
+    }
+
+    function copyAgentPrompt() {
+      const textarea = document.getElementById("agentPromptTextarea");
+      if (!textarea) return;
+      textarea.select();
+      textarea.setSelectionRange(0, 99999);
+      navigator.clipboard.writeText(textarea.value).then(() => {
+        const btn = document.getElementById("copyAgentPromptBtn");
+        const originalText = btn.textContent;
+        btn.textContent = "✅ 已複製 Prompt！";
+        btn.style.borderColor = "#10b981";
+        btn.style.color = "#a7f3d0";
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.borderColor = "#38bdf8";
+          btn.style.color = "#7dd3fc";
+        }, 2500);
+      }).catch(err => {
+        alert("複製失敗，請手動全選複製：" + err.message);
+      });
     }
 
     function getPrefs() {
