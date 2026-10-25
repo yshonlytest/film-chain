@@ -649,8 +649,8 @@
         </div>
       </div>
 
-      <!-- 🤖 AI Agent 本地環境對齊卡片（依據各電腦硬體自動配置） -->
-      <div id="step1AgentPromptBox" style="background:#091222; border:1px solid #1e3a5f; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+      <!-- 🤖 AI Agent 本地環境對齊卡片（僅在選擇「本地配置示範」時動態顯示） -->
+      <div id="step1AgentPromptBox" style="display:none; background:#091222; border:1px solid #1e3a5f; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
           <div style="font-size:0.86rem; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
             <span>🤖</span>
@@ -1086,6 +1086,12 @@
       const badge = document.getElementById("currentRouteBadge");
       badge.textContent = isLocal ? "目前模式：🖥️ 本地配置示範" : "目前模式：⚡ 雲端極速渲染引擎";
       badge.className = `badge ${isLocal ? "ok" : "warn"}`;
+
+      // Update Step 1 Agent Prompt Box (Only shown in local route)
+      const agentBox = document.getElementById("step1AgentPromptBox");
+      if (agentBox) {
+        agentBox.style.display = isLocal ? "block" : "none";
+      }
 
       // Update Step 3 View
       document.getElementById("panelLocalView").style.display = isLocal ? "block" : "none";
