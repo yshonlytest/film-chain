@@ -615,7 +615,7 @@
       </div>
 
       <div class="route-tabs">
-        <div id="routeCardLocal" class="route-tab-card" onclick="selectRoute('local')">
+        <div id="routeCardLocal" class="route-tab-card" role="button" tabindex="0" onclick="selectRoute('local')" onkeydown="if(event.key==='Enter'||event.key===' ')selectRoute('local')">
           <div class="route-tab-title">
             <span>🖥️ 本地配置示範 (Local Pipeline Demo)</span>
             <span class="badge ok" style="font-size:0.7rem;">本機算力 · Agent對齊</span>
@@ -625,7 +625,7 @@
           </div>
         </div>
 
-        <div id="routeCardCloud" class="route-tab-card active cloud" onclick="selectRoute('cloud')">
+        <div id="routeCardCloud" class="route-tab-card active cloud" role="button" tabindex="0" onclick="selectRoute('cloud')" onkeydown="if(event.key==='Enter'||event.key===' ')selectRoute('cloud')">
           <div class="route-tab-title">
             <span>⚡ 雲端極速渲染引擎 (Cloud Engine)</span>
             <span class="badge warn" style="font-size:0.7rem;">雲端高速 · 按需調用</span>
@@ -1113,10 +1113,11 @@
     function copyAgentPrompt() {
       const textarea = document.getElementById("agentPromptTextarea");
       if (!textarea) return;
-      textarea.select();
-      textarea.setSelectionRange(0, 99999);
-      navigator.clipboard.writeText(textarea.value).then(() => {
+      const textToCopy = textarea.value;
+
+      function onCopySuccess() {
         const btn = document.getElementById("copyAgentPromptBtn");
+        if (!btn) return;
         const originalText = btn.textContent;
         btn.textContent = "✅ 已複製 Prompt！";
         btn.style.borderColor = "#10b981";
@@ -1126,9 +1127,30 @@
           btn.style.borderColor = "#38bdf8";
           btn.style.color = "#7dd3fc";
         }, 2500);
-      }).catch(err => {
-        alert("複製失敗，請手動全選複製：" + err.message);
-      });
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(onCopySuccess).catch(() => {
+          fallbackCopyText(textarea, onCopySuccess);
+        });
+      } else {
+        fallbackCopyText(textarea, onCopySuccess);
+      }
+    }
+
+    function fallbackCopyText(textarea, onSuccess) {
+      try {
+        textarea.select();
+        textarea.setSelectionRange(0, 99999);
+        const successful = document.execCommand("copy");
+        if (successful && onSuccess) {
+          onSuccess();
+        } else if (!successful) {
+          alert("複製失敗，請手動全選下方方框複製。");
+        }
+      } catch (err) {
+        alert("複製失敗，請手動全選下方方框複製：" + err.message);
+      }
     }
 
     function getPrefs() {
