@@ -649,6 +649,21 @@
         </div>
       </div>
 
+      <!-- 🤖 AI Agent 本地環境對齊卡片（依據各電腦硬體自動配置） -->
+      <div id="step1AgentPromptBox" style="background:#091222; border:1px solid #1e3a5f; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
+          <div style="font-size:0.86rem; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
+            <span>🤖</span>
+            <span>因每台電腦硬體與 ComfyUI 節點配置互不相同，建議交給 AI Agent 自動偵測安裝與對齊：</span>
+          </div>
+          <button type="button" id="copyAgentPromptBtn" class="btn" onclick="copyAgentPrompt()" style="padding:5px 14px; font-size:0.8rem; background:rgba(56,189,248,0.18); border-color:#38bdf8; color:#7dd3fc; font-weight:600;">
+            📋 複製 Agent Prompt
+          </button>
+        </div>
+        <div style="font-size:0.75rem; color:#64748b; margin-bottom:4px;">▼ 指令內容預覽（可直接點擊上方按鈕一鍵複製）：</div>
+        <textarea id="agentPromptTextarea" readonly style="width:100%; height:74px; background:#050912; color:#94a3b8; border:1px solid #1e293b; border-radius:6px; font-family:monospace; font-size:0.76rem; padding:8px 10px; line-height:1.45; resize:none;">請你下載 https://github.com/yshonlytest/film-chain 並參考其「本地配置示範（路線 A）」，作為長影片銜接及製作的框架。請幫我判斷目前電腦的硬體配置（GPU 顯存、驅動與環境）是否有本地產製長影片的可能性；若可以，請幫我下載 ComfyUI 及配置相關依賴節點，並將流程中的 API 呼叫結構替換為我本機真實可運行的 ComfyUI 架構。</textarea>
+      </div>
+
       <div class="step1-container">
         <!-- Left Column: Reference Image Only -->
         <div class="ref-image-col">
@@ -811,29 +826,8 @@
       <!-- Mode A: Local ComfyUI Panel -->
       <div id="panelLocalView">
         <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #a7f3d0;">
-          <strong>⚡ 本地配置示範說明：</strong><br>
-          本模式以本地 ComfyUI 與 MiniMax-H3 節點為示範架構，展示「九宮格錨定＋首尾幀無縫接續」在本地執行的可能流程。因不同電腦之 GPU 顯存、系統與已安裝節點互不相同，直接呼叫本機端點易有環境相容性問題。
-        </div>
-
-        <!-- 🤖 AI Agent Local Setup Prompt Card -->
-        <div style="background: #0b1120; border: 1px solid #1e293b; border-radius: 10px; padding: 14px; margin-bottom: 18px; box-shadow: 0 4px 14px rgba(0,0,0,0.4);">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; flex-wrap:wrap; gap:8px;">
-            <strong style="color:#38bdf8; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
-              <span>🤖 交給 AI Agent 一鍵對齊本地環境</span>
-              <span class="info-tip">ⓘ
-                <span class="tooltip-content">
-                  複製此 Prompt 給您偏好的 Coding Agent（如 Claude Code, Antigravity, Cursor 等），Agent 會自動探測您的電腦顯卡、拉取本專案並替換為您本地真實的 ComfyUI 拓撲。
-                </span>
-              </span>
-            </strong>
-            <button type="button" id="copyAgentPromptBtn" class="btn" onclick="copyAgentPrompt()" style="padding:4px 12px; font-size:0.78rem; background:rgba(56,189,248,0.15); border-color:#38bdf8; color:#7dd3fc;">
-              📋 複製 Agent Prompt
-            </button>
-          </div>
-          <div style="font-size:0.78rem; color:#94a3b8; margin-bottom:8px; line-height:1.45;">
-            💡 建議複製以下指令發給終端機 AI Agent，讓 Agent 依據您的硬體自動部署 ComfyUI、安裝所需節點並動態適配工作流：
-          </div>
-          <textarea id="agentPromptTextarea" readonly style="width:100%; height:90px; background:#070b14; color:#e2e8f0; border:1px solid #334155; border-radius:6px; font-family:monospace; font-size:0.76rem; padding:8px; line-height:1.4; resize:vertical;">請你下載 https://github.com/yshonlytest/film-chain 並參考其「本地配置示範（路線 A）」，作為長影片銜接及製作的框架。請幫我判斷目前電腦的硬體配置（GPU 顯存、驅動與環境）是否有本地產製長影片的可能性；若可以，請幫我下載 ComfyUI 及配置相關依賴節點，並將流程中的 API 呼叫結構替換為我本機真實可運行的 ComfyUI 架構。</textarea>
+          <strong>⚡ 本地渲染管線（ComfyUI 架構）：</strong><br>
+          已完成本地環境對齊後，可在此選擇檔位直接調用本地 ComfyUI API 進行逐段排程渲染與自動拼接。
         </div>
 
         <div class="form-group">
