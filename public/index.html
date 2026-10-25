@@ -2088,11 +2088,13 @@ Return ONLY valid JSON matching this schema:
     }
 
     // ==================== Step 4: Playback, Seamless Player & In-Browser Merge ====================
-    function playVideoInStage(url, labelText) {
+    function playVideoInStage(url, labelText, autoPlay = true) {
       const player = document.getElementById("mainVideoPlayer");
       player.src = url;
       player.load();
-      player.play().catch(() => {});
+      if (autoPlay) {
+        player.play().catch(() => {});
+      }
       document.getElementById("currentVideoLabel").textContent = labelText;
       const dl = document.getElementById("downloadVideoBtn");
       dl.href = url;
@@ -2245,7 +2247,8 @@ Return ONLY valid JSON matching this schema:
       renderSegmentsPlaylist(SHISA_DEFAULT_CONFIG.part_videos);
       playVideoInStage(
         SHISA_DEFAULT_CONFIG.merged_video_path,
-        "🎬 預設方案 15.4 秒完整合併成果 (okinawa_shisa/shisa_15s_story_merged_00001_.mp4)"
+        "🎬 預設方案 15.4 秒完整合併成果 (okinawa_shisa/shisa_15s_story_merged_00001_.mp4)",
+        false
       );
     }
 
