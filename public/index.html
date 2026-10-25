@@ -558,8 +558,8 @@
     <div class="brand">
       <span style="font-size: 1.5rem;">🎬</span>
       <div>
-        <h1>H3 九宮格分鏡自動產片工作坊</h1>
-        <span style="font-size: 0.76rem; color: var(--muted);">線性工作流導引 · 支援本地 ComfyUI 免費算力 與 雲端 Seedance 買額度秒產</span>
+        <h1>FilmChain AI 影視連貫分鏡工作坊</h1>
+        <span style="font-size: 0.76rem; color: var(--muted);">專業級 AI 首尾連貫影像創作平台 · 支援本地工作流與雲端極速渲染</span>
       </div>
     </div>
     <div class="header-actions">
@@ -567,13 +567,13 @@
         <span id="comfyStatusBadge" class="badge warn" onclick="checkComfyConnection()" style="cursor:pointer;">檢查本地 ComfyUI...</span>
         <span class="info-tip">ⓘ
           <span class="tooltip-content">
-            <strong>🖥️ 本地 ComfyUI 狀態</strong><br>
-            • 綠燈 🟢：本機已連線。<br>
-            • 黃燈 ⚪：未連線。若走本地路線，請在資料夾雙擊 <code>一鍵啟動_H3分鏡工作坊.command</code> 即可自動開好。
+            <strong>🖥️ 本地 ComfyUI 服務狀態</strong><br>
+            • 綠燈 🟢：本機服務連線正常。<br>
+            • 黃燈 ⚪：未連線。若使用本地引擎，請先執行 <code>一鍵啟動_H3分鏡工作坊.command</code> 即可。
           </span>
         </span>
       </div>
-      <button type="button" onclick="loadShisaDemo()">🦁 載入 15 秒預設方案</button>
+      <button type="button" onclick="loadShisaDemo()">🎬 載入示範專案</button>
     </div>
   </header>
 
@@ -586,15 +586,15 @@
           <span style="font-size: 1.6rem; line-height: 1.2;">🛡️</span>
           <div>
             <div style="font-size: 0.92rem; font-weight: 700; color: #6ee7b7; margin-bottom: 2px;">
-              純本地瀏覽器技術架構 · API Key 零外流保障
+              端側安全架構 · API 密鑰隱私保障
             </div>
             <div style="font-size: 0.78rem; color: #94a3b8; line-height: 1.5;">
-              本工作坊採用<strong>純前端架構 (Client-Side Only)</strong>，您填寫的所有 API 密鑰（如 Google Gemini、OpenAI、雲端影片 API）<strong>100% 僅儲存在您本機瀏覽器的 <code>localStorage</code> 中</strong>，絕無任何中間伺服器攔截或儲存。所有 API 均由您的瀏覽器端對端直連發送，請安心使用！
+              本平台採用<strong>純端側（Client-Side）安全設計</strong>，所有 API 密鑰僅留存於您的本地瀏覽器 <code>localStorage</code>，絕不經由中間伺服器攔截或儲存。所有請求皆端對端直連發送，請安心使用。
             </div>
           </div>
         </div>
         <button type="button" class="btn" onclick="openSettingsModal()" style="border-color:#10b981; color:#a7f3d0; background:rgba(16,185,129,0.12); padding:8px 16px; white-space:nowrap;">
-          🔑 點此設定 / 檢查 API Key
+          🔑 配置 / 檢查 API 密鑰
         </button>
       </div>
     </div>
@@ -603,35 +603,35 @@
     <div class="route-selection-box">
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <strong style="font-size:0.96rem; color:#e2e8f0; display:flex; align-items:center; gap:8px;">
-          <span>🔀 先選路線：您希望如何生成最終影片？</span>
+          <span>🔀 選擇渲染模式 (Rendering Pipeline)</span>
           <span class="info-tip">ⓘ
             <span class="tooltip-content">
-              <strong>💡 兩條路線完全隔離</strong><br>
-              選擇後，下方「步驟三」會完全切換成對應路線的專屬介面，絕不混淆！
+              <strong>💡 雙引擎完全隔離</strong><br>
+              選擇後，「步驟三」會自動切換為對應的專屬渲染面板與控制參數。
             </span>
           </span>
         </strong>
-        <span id="currentRouteBadge" class="badge ok">目前選取：🖥️ 本地 ComfyUI 免費流</span>
+        <span id="currentRouteBadge" class="badge ok">目前模式：🖥️ 本地工作流引擎</span>
       </div>
 
       <div class="route-tabs">
         <div id="routeCardLocal" class="route-tab-card active local" onclick="selectRoute('local')">
           <div class="route-tab-title">
-            <span>🖥️ 路線 A：本地極限省錢流 (Mac 免費跑)</span>
-            <span class="badge ok" style="font-size:0.7rem;">0 元免費</span>
+            <span>🖥️ 本地工作流引擎 (Local Pipeline)</span>
+            <span class="badge ok" style="font-size:0.7rem;">本機算力 · 免額度</span>
           </div>
           <div class="route-tab-desc">
-            直接調用本機 Mac 的 MiniMax-H3 FL2VA 模型，雙擊啟動檔自動排程生片與 ffmpeg 合併，不用花一毛 API 影片額度。
+            調用本地 ComfyUI 與 MiniMax-H3 節點進行排程生成與自動剪裁合併，完全掌控資產隱私，零雲端費用。
           </div>
         </div>
 
         <div id="routeCardCloud" class="route-tab-card" onclick="selectRoute('cloud')">
           <div class="route-tab-title">
-            <span>⚡ 路線 B：雲端極速秒產流 (Seedance / fal.ai)</span>
-            <span class="badge warn" style="font-size:0.7rem;">買額度調用</span>
+            <span>⚡ 雲端極速渲染引擎 (Cloud Engine)</span>
+            <span class="badge warn" style="font-size:0.7rem;">雲端高速 · 按需調用</span>
           </div>
           <div class="route-tab-desc">
-            免裝 ComfyUI、免開電腦顯卡！直接呼叫火山方舟 Seedance 1.0 Pro 或 fal.ai 首尾幀雲端併發，1~2 分鐘出片。
+            免本機顯卡運算，直接調用雲端首尾幀控制模型集群（ByteDance Seedance / fal.ai 等）進行並行渲染，1~2 分鐘高效產出。
           </div>
         </div>
       </div>
@@ -653,7 +653,7 @@
         <!-- Left Column: Reference Image Only -->
         <div class="ref-image-col">
           <label>
-            <span>預設參考圖（供AI鎖定人物及風格）</span>
+            <span>角色與風格視覺參考圖</span>
             <span class="info-tip">ⓘ
               <span class="tooltip-content">
                 <strong>🖼️ 主角風格錨定圖</strong><br>
@@ -663,7 +663,7 @@
           </label>
           <div class="ref-dropzone" onclick="document.getElementById('refImageInput').click()">
             <input type="file" id="refImageInput" accept="image/*" style="display:none" onchange="handleRefUpload(this)" />
-            <img id="refPreview" alt="預設參考圖預覽" />
+            <img id="refPreview" alt="視覺參考圖預覽" />
             <div id="refPlaceholderNotice" style="display:flex; flex-direction:column; align-items:center; gap:8px;">
               <span id="refPlaceholderIcon" style="font-size: 2.2rem; opacity: 0.7;">🖼️</span>
               <button type="button" class="ref-dropzone-btn" id="refUploadBtn">
@@ -678,15 +678,15 @@
           <!-- Chinese Description -->
           <div class="form-group" style="margin-bottom:0;">
             <label for="chineseDesc">
-              <span>📝 中文情節描述（開口台詞請放引號「...」內）</span>
+              <span>📝 故事劇情大綱與對白（台詞請置於「...」引號內）</span>
               <span class="info-tip">ⓘ
                 <span class="tooltip-content">
-                  <strong>📝 台詞對嘴提示</strong><br>
-                  台詞請放在引號中（如「坐太久活動一下」），AI 會自動轉成 <code>&lt;d&gt;[Chinese] ...&lt;/d&gt;</code> 標籤，讓模型產生自然的中文發音與對嘴動作。
+                  <strong>📝 對白口型同步提示</strong><br>
+                  對白請置於引號中（如「坐太久活動一下」），AI 導演會自動標註 <code>&lt;d&gt;[Chinese] ...&lt;/d&gt;</code>，生成自然的中文發音與精確唇形。
                 </span>
               </span>
             </label>
-            <textarea id="chineseDesc" placeholder="請輸入您的故事創意與主角台詞..."></textarea>
+            <textarea id="chineseDesc" placeholder="請輸入您的故事創意、場景轉換與主角台詞..."></textarea>
           </div>
 
           <!-- Duration Strategy -->
@@ -703,8 +703,8 @@
                 </span>
               </label>
               <select id="durationModeSelect" onchange="toggleTargetSecondsInput()">
-                <option value="auto">🤖 方案 A：請 AI 根據情節複雜度「自動分析最適合的秒數」(不限段落)</option>
-                <option value="expand">✍️ 方案 B：指定目標總秒數，請 AI「自動擴寫豐富劇情至指定秒數」</option>
+                <option value="auto">🤖 智能評估：由 AI 依劇情張力自動推算最佳時長</option>
+                <option value="expand">✍️ 自訂時長：指定目標總秒數，由 AI 擴寫充實分鏡幕數</option>
               </select>
             </div>
             <div id="customSecondsBox" style="display:none;">
@@ -716,7 +716,7 @@
           <!-- AI Provider for Step 1 -->
           <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
             <div>
-              <label>🧠 分鏡規劃文字模型 (Prompt 規劃)</label>
+              <label>🧠 分鏡規劃文字模型</label>
               <select id="promptProviderSelect" onchange="saveLocalPrefs()">
                 <option value="gemini">Google Gemini (gemini-3.8-flash - 推薦/速度快)</option>
                 <option value="gemini-pro">Google Gemini Pro (gemini-3.1-pro-preview)</option>
@@ -724,19 +724,19 @@
               </select>
             </div>
             <div>
-              <label>🎨 3×3 九宮格生圖模型</label>
+              <label>🎨 3×3 九宮格視覺模型</label>
               <select id="imageProviderSelect" onchange="saveLocalPrefs()">
                 <option value="nano-banana-2">Nano Banana 2 (gemini-3.1-flash-image - 推薦/幾秒出圖)</option>
                 <option value="nano-banana-pro">Nano Banana Pro (gemini-3-pro-image)</option>
                 <option value="openai-image">OpenAI Image (gpt-image-1)</option>
-                <option value="manual">不呼叫 API (直接使用既有九宮格)</option>
+                <option value="manual">手動載入既有九宮格</option>
               </select>
             </div>
           </div>
 
           <!-- Execute Step 1 Button -->
           <button type="button" id="planBtn" class="primary" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem; margin-top:2px;" onclick="executeStep1()">
-            ✨ 執行步驟一：AI 分析時長 ＆ 產生九宮格與各段分鏡 Prompt (前往步驟二)
+            ✨ 智能規劃分鏡腳本與九宮格圖（進入步驟二）
           </button>
           <div id="planStatusMsg" style="font-size: 0.85rem; color: var(--muted); margin-top: 2px;"></div>
         </div>
@@ -798,21 +798,21 @@
       </div>
     </section>
 
-    <!-- 步驟三：產影與合併 (根據最頂部路線二選一，完全隔離顯示) -->
+    <!-- 步驟三：影像分段渲染與管線合成 (根據模式二選一，完全隔離顯示) -->
     <section class="workflow-card" id="step3Card">
       <div class="card-header">
         <div class="card-title">
           <span class="step-num">3</span>
-          <span id="step3TitleText">步驟三：本地 ComfyUI 產影片與自動合併</span>
+          <span id="step3TitleText">步驟三：本地管線渲染與自動合併</span>
         </div>
-        <span id="step3RouteTag" class="badge ok">路線 A 本地模式</span>
+        <span id="step3RouteTag" class="badge ok">本地工作流模式</span>
       </div>
 
       <!-- Mode A: Local ComfyUI Panel -->
       <div id="panelLocalView">
         <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #a7f3d0;">
-          <strong>⚡ 本地 ComfyUI 啟動說明：</strong><br>
-          直接在專案資料夾雙擊 <code>一鍵啟動_H3分鏡工作坊.command</code> 即可自動開好服務（右上角亮綠燈 🟢 即可）。本模式完全免費，由您 Mac 的顯卡在背景逐段生成、自動剪除首幀並由 ffmpeg 合併成單一 MP4 存於 <code>ComfyUI/output/...</code>。
+          <strong>⚡ 本地渲染管線說明：</strong><br>
+          直接調用本地 ComfyUI 與 MiniMax-H3 節點進行背景逐段排程生成，首尾影格無縫銜接並由 ffmpeg 自動修剪拼接輸出。完全免費且資產不離開本機。
         </div>
 
         <div class="form-group">
@@ -834,15 +834,15 @@
         </div>
 
         <button type="button" id="startLocalVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeLocalComfyStep()">
-          🎬 送進本地 ComfyUI 自動排程產片（尾幀接首幀 ＋ 剪首幀 ＋ 合併）
+          🎬 啟動本地管線渲染（排程生成與自動合併）
         </button>
       </div>
 
       <!-- Mode B: Cloud Seedance Panel -->
       <div id="panelCloudView" style="display:none;">
         <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #cbd5e1;">
-          <strong>☁️ 雲端極速產片說明：</strong><br>
-          <strong>完全不需要開 ComfyUI 或開機！</strong> 點擊右上方「⚙️ 設定」輸入您在火山方舟 (Ark) 或 fal.ai 購買額度的 API Key。系統會將各段首尾幀**同時送入雲端 GPU 併發運算**，約 1~2 分鐘產出所有片段！
+          <strong>☁️ 雲端並行渲染說明：</strong><br>
+          免開本機顯卡運算，系統將各分段首尾關鍵影格同時發送至雲端 GPU 集群進行並行渲染，預計 1~2 分鐘內完成全部分鏡片段。
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px;">
@@ -851,20 +851,20 @@
             <select id="cloudProviderSelect">
               <option value="cloud-seedance">火山方舟 Ark (Doubao Seedance 1.0 Pro 首尾幀)</option>
               <option value="cloud-fal">fal.ai 額度平台 (Seedance / Kling / Wan)</option>
-              <option value="cloud-openapi">第三方買額度中轉站 (/v1/video 相容)</option>
+              <option value="cloud-openapi">第三方兼職轉接站 (/v1/video 相容)</option>
             </select>
           </div>
           <div>
             <label>🔗 多段首尾幀銜接策略</label>
             <select id="cloudChainModeSelect">
-              <option value="panel-anchor">⚡ 九宮格首尾幀錨定併發（多段同時在雲端算，1分鐘完成）</option>
-              <option value="strict-last-frame">🔗 嚴格擷取前一段真實尾幀接下一段首幀（排隊逐段生成）</option>
+              <option value="panel-anchor">⚡ 九宮格首尾幀錨定並行（多段同時在雲端算，1分鐘完成）</option>
+              <option value="strict-last-frame">🔗 嚴格銜接前段真實尾幀（排隊逐段生成）</option>
             </select>
           </div>
         </div>
 
         <button type="button" id="startCloudVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeCloudVideoStep()">
-          🚀 啟動雲端併發生成（約 1~2 分鐘完成所有段落）
+          🚀 啟動雲端並行渲染（預計 1~2 分鐘完成）
         </button>
       </div>
 
@@ -888,7 +888,7 @@
       <div class="card-header">
         <div class="card-title">
           <span class="step-num">4</span>
-          <span>步驟四：分段預覽、合併與成果導出</span>
+          <span>步驟四：成品預覽、拼接導出與播放</span>
         </div>
         <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
           <span id="step4SegmentsBadge" class="badge">共 3 段個別影片 ＋ 1 支完整彙整總片</span>
@@ -899,14 +899,14 @@
       <!-- 1. 各分段成果清單與純前端合併 (放在前) -->
       <div id="cloudSegmentsPlaylistBox" style="display:none; background:#0d1422; border:1px solid #23314a; border-radius:10px; padding:14px; margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-          <strong style="font-size:0.88rem; color:#a5b4fc;">🎞️ 各分段成果清單（點擊可逐段試看或單獨下載）</strong>
+          <strong style="font-size:0.88rem; color:#a5b4fc;">🎞️ 分段成果清單（支援逐段預覽與單獨下載）</strong>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <button type="button" id="seamlessPlayBtn" onclick="toggleSeamlessPlayback()" style="padding:6px 12px; font-size:0.8rem;">▶️ 連續無縫播放全片</button>
-            <button type="button" id="browserMergeBtn" onclick="mergeAndDownloadCloudClips()" style="padding:6px 14px; font-size:0.82rem; background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; color:#fff; font-weight:700;">🎬 純前端一鍵合併 MP4</button>
+            <button type="button" id="browserMergeBtn" onclick="mergeAndDownloadCloudClips()" style="padding:6px 14px; font-size:0.82rem; background:linear-gradient(135deg, #10b981, #059669); border-color:#10b981; color:#fff; font-weight:700;">🎬 端側無縫拼接導出完整影片</button>
           </div>
         </div>
         <div style="font-size:0.75rem; color:#94a3b8; background:rgba(99,102,241,0.08); border-left:3px solid var(--accent); padding:8px 10px; border-radius:4px; margin-bottom:10px; line-height:1.45;">
-          💡 <strong>合併說明</strong>：若為雲端分段產片，點擊上方「🎬 純前端一鍵合併 MP4」後，瀏覽器會在前端記憶體直接串接錄製成單一無縫 MP4，完成後會自動呈現在下方<strong>最終成果播放器</strong>並觸發下載！
+          💡 <strong>拼接說明</strong>：點擊上方「🎬 端側無縫拼接導出完整影片」後，瀏覽器會在端側記憶體直接串接錄製為完整 MP4，完成後會自動呈現在下方<strong>成果展示播放器</strong>並觸發下載。
         </div>
         <div id="cloudClipsList" class="cloud-clips-list"></div>
       </div>
@@ -914,8 +914,8 @@
       <!-- 2. 最終成果展示與下載 (放在最末尾) -->
       <div class="video-player-stage">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
-          <strong style="font-size:0.88rem; color:#e2e8f0;">🏆 最終彙整成果展示與下載</strong>
-          <a id="downloadVideoBtn" class="btn primary" href="#" download style="padding:5px 14px; font-size:0.8rem; display:none;">⬇️ 下載最終完整 MP4</a>
+          <strong style="font-size:0.88rem; color:#e2e8f0;">🏆 完整合成影片預覽與下載</strong>
+          <a id="downloadVideoBtn" class="btn primary" href="#" download style="padding:5px 14px; font-size:0.8rem; display:none;">⬇️ 下載完整 MP4</a>
         </div>
         <video id="mainVideoPlayer" controls playsinline preload="metadata"></video>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.82rem; color:var(--muted); flex-wrap:wrap; gap:8px;">
@@ -928,17 +928,17 @@
 
   <!-- Settings Modal -->
   <dialog id="settingsDialog">
-    <h3 style="margin-bottom: 12px; font-size: 1.05rem;">⚙️ API Key 與雲端服務設定</h3>
+    <h3 style="margin-bottom: 12px; font-size: 1.05rem;">⚙️ 系統服務與 API 密鑰配置</h3>
 
     <div class="form-group">
-      <label for="geminiKeyInput">🔑 Google Gemini API Key（步驟一 分鏡規劃 & Nano Banana 九宮格生圖）</label>
+      <label for="geminiKeyInput">🔑 Google Gemini API 密鑰（劇本規劃與分鏡視覺生成）</label>
       <input type="password" id="geminiKeyInput" placeholder="AIzaSy..." />
     </div>
 
     <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;" />
 
     <div class="form-group">
-      <label for="openaiKeyInput">🔑 OpenAI / OpenAPI 相容 API Key（選填，步驟一 GPT 規劃 & OpenAI 生圖）</label>
+      <label for="openaiKeyInput">🔑 OpenAI / 兼容協定 API 密鑰（文字規劃與圖像生成）</label>
       <input type="password" id="openaiKeyInput" placeholder="sk-..." />
     </div>
     <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:10px;">
@@ -955,11 +955,11 @@
     <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;" />
 
     <div style="font-size:0.86rem; font-weight:700; color:#6ee7b7; margin-bottom:8px;">
-      ☁️ 路線 B 專用：雲端買額度調用 Seedance / Kling / Wan 影片 API 設定
+      ☁️ 雲端影像渲染服務配置（支援 Seedance / fal.ai / 兼容協定）
     </div>
     <div class="form-group">
-      <label for="cloudVideoKeyInput">🔑 雲端影片服務 API Key（火山方舟 Ark / BytePlus / fal.ai / 第三方額度中轉站 Key）</label>
-      <input type="password" id="cloudVideoKeyInput" placeholder="貼上您購買額度的平台 API Key..." />
+      <label for="cloudVideoKeyInput">🔑 雲端影片服務 API 密鑰（火山方舟 Ark / BytePlus / fal.ai 等）</label>
+      <input type="password" id="cloudVideoKeyInput" placeholder="貼上雲端平台 API 密鑰..." />
     </div>
     <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:10px;">
       <div class="form-group">
@@ -1069,7 +1069,7 @@
       document.getElementById("routeCardCloud").className = `route-tab-card ${!isLocal ? "active cloud" : ""}`;
 
       const badge = document.getElementById("currentRouteBadge");
-      badge.textContent = isLocal ? "目前選取：🖥️ 本地 ComfyUI 免費流" : "目前選取：⚡ 雲端極速秒產流";
+      badge.textContent = isLocal ? "目前模式：🖥️ 本地工作流引擎" : "目前模式：⚡ 雲端極速渲染引擎";
       badge.className = `badge ${isLocal ? "ok" : "warn"}`;
 
       // Update Step 3 View
@@ -1079,12 +1079,12 @@
       const step3Title = document.getElementById("step3TitleText");
       const step3Tag = document.getElementById("step3RouteTag");
       if (isLocal) {
-        step3Title.textContent = "步驟三：本地 ComfyUI 產影片與自動合併";
-        step3Tag.textContent = "路線 A 本地模式";
+        step3Title.textContent = "步驟三：本地管線渲染與自動合併";
+        step3Tag.textContent = "本地工作流模式";
         step3Tag.className = "badge ok";
       } else {
-        step3Title.textContent = "步驟三：雲端 Seedance 併發極速產片與導出";
-        step3Tag.textContent = "路線 B 雲端模式";
+        step3Title.textContent = "步驟三：雲端並行渲染與片段生成";
+        step3Tag.textContent = "雲端渲染模式";
         step3Tag.className = "badge warn";
       }
     }
