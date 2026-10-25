@@ -611,11 +611,11 @@
             </span>
           </span>
         </strong>
-        <span id="currentRouteBadge" class="badge ok">目前模式：🖥️ 本地工作流引擎</span>
+        <span id="currentRouteBadge" class="badge warn">目前模式：⚡ 雲端極速渲染引擎</span>
       </div>
 
       <div class="route-tabs">
-        <div id="routeCardLocal" class="route-tab-card active local" onclick="selectRoute('local')">
+        <div id="routeCardLocal" class="route-tab-card" onclick="selectRoute('local')">
           <div class="route-tab-title">
             <span>🖥️ 本地工作流引擎 (Local Pipeline)</span>
             <span class="badge ok" style="font-size:0.7rem;">本機算力 · 免額度</span>
@@ -625,7 +625,7 @@
           </div>
         </div>
 
-        <div id="routeCardCloud" class="route-tab-card" onclick="selectRoute('cloud')">
+        <div id="routeCardCloud" class="route-tab-card active cloud" onclick="selectRoute('cloud')">
           <div class="route-tab-title">
             <span>⚡ 雲端極速渲染引擎 (Cloud Engine)</span>
             <span class="badge warn" style="font-size:0.7rem;">雲端高速 · 按需調用</span>
@@ -996,7 +996,7 @@
 
   <script>
     // ==================== Global State ====================
-    let activeRoute = "local"; // 'local' or 'cloud'
+    let activeRoute = "cloud"; // 'local' or 'cloud'
     let refImageBase64 = "";
     let refImageMime = "image/jpeg";
     let gridImageDataUrl = "";
@@ -2186,7 +2186,7 @@ Return ONLY valid JSON matching this schema:
       const p = getPrefs();
       document.getElementById("promptProviderSelect").value = p.promptProvider;
       document.getElementById("imageProviderSelect").value = p.imageProvider;
-      selectRoute("local");
+      selectRoute("cloud");
       checkComfyConnection();
       loadShisaDemo();
 
