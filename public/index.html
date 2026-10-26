@@ -504,6 +504,87 @@
     .code-cmd { color: #38bdf8; font-weight: 600; }
     .code-flag { color: #f59e0b; }
 
+    /* Dynamic Pipeline Timeline Tracker */
+    .pipeline-tracker-container {
+      background: #0b1322;
+      border: 1px solid #1e3a5f;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 18px;
+    }
+    .pipeline-tracker-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .pipeline-tracker-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 680px) {
+      .pipeline-tracker-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+    }
+    .pipeline-step-card {
+      background: #070e1b;
+      border: 1px solid #1e293b;
+      border-radius: 10px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 6px;
+      transition: all 0.2s ease;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+    .pipeline-step-card.stage-init {
+      border-color: #0284c7;
+      background: rgba(2, 132, 199, 0.08);
+    }
+    .pipeline-step-card.stage-render {
+      border-color: #1e3a5f;
+      background: #091222;
+    }
+    .pipeline-step-card.stage-merge {
+      border-color: #10b981;
+      background: rgba(16, 185, 129, 0.08);
+    }
+    .pipeline-step-num {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #94a3b8;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .pipeline-step-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: #e0f2fe;
+      word-break: break-word;
+    }
+    .pipeline-step-time {
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: #38bdf8;
+    }
+    .pipeline-step-card.stage-merge .pipeline-step-time {
+      color: #34d399;
+    }
+    .pipeline-step-desc {
+      font-size: 0.73rem;
+      color: #94a3b8;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
     /* Progress & Video Stage */
     .progress-track {
       width: 100%; height: 12px; background: #090d14;
@@ -877,40 +958,8 @@
           </div>
         </div>
 
-        <!-- 4-Stage Visual Workflow Tracker -->
-        <div style="background:#0b1322; border:1px solid #1e3a5f; border-radius:12px; padding:16px; margin-bottom:18px;">
-          <h4 style="font-size:0.92rem; color:#38bdf8; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-            <span>⏱️ 雲端渲染與拼接管線進度預估 (Pipeline Timeline)</span>
-            <span class="info-tip">ⓘ
-              <span class="tooltip-content">
-                <strong>💡 實測效能基準</strong><br>
-                每段 5 秒 (1376×768) 影片約耗時 4 分 40 秒。Agent 會在終端機自動接力完成各段渲染、尾幀傳遞與最後的 ffmpeg 拼接。
-              </span>
-            </span>
-          </h4>
-          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;">
-            <div style="background:#070e1b; border:1px solid #1e293b; border-radius:8px; padding:10px 12px;">
-              <div style="font-size:0.75rem; color:#94a3b8;">階段一：環境與認證</div>
-              <div style="font-size:0.88rem; font-weight:700; color:#38bdf8; margin:4px 0;">OAuth 授權檢測</div>
-              <div style="font-size:0.72rem; color:#64748b;">驗證 Compute Units 餘額</div>
-            </div>
-            <div style="background:#070e1b; border:1px solid #1e293b; border-radius:8px; padding:10px 12px;">
-              <div style="font-size:0.75rem; color:#94a3b8;">階段二：Part 1 甦醒伸展</div>
-              <div style="font-size:0.88rem; font-weight:700; color:#e0f2fe; margin:4px 0;">4~5 分鐘</div>
-              <div style="font-size:0.72rem; color:#64748b;">124 幀 / 1376×768 音畫同步</div>
-            </div>
-            <div style="background:#070e1b; border:1px solid #1e293b; border-radius:8px; padding:10px 12px;">
-              <div style="font-size:0.75rem; color:#94a3b8;">階段三：Part 2 尾幀接首幀</div>
-              <div style="font-size:0.88rem; font-weight:700; color:#e0f2fe; margin:4px 0;">4~5 分鐘</div>
-              <div style="font-size:0.72rem; color:#64748b;">提取最後一幀接續拋球雜耍</div>
-            </div>
-            <div style="background:#070e1b; border:1px solid #10b981; border-radius:8px; padding:10px 12px; background:rgba(16,185,129,0.06);">
-              <div style="font-size:0.75rem; color:#6ee7b7;">階段四：端側拼接</div>
-              <div style="font-size:0.88rem; font-weight:700; color:#34d399; margin:4px 0;">約 1 秒 (即時)</div>
-              <div style="font-size:0.72rem; color:#6ee7b7;">ffmpeg 自動消幀無縫合併</div>
-            </div>
-          </div>
-        </div>
+        <!-- Dynamic Pipeline Timeline Tracker (自動隨段落數增減及響應式適配) -->
+        <div id="colabPipelineTracker" class="pipeline-tracker-container"></div>
 
         <!-- Action Control Hub -->
         <div style="background:#091222; border:1px solid #1e3a5f; border-radius:12px; padding:16px; margin-bottom:16px;">
@@ -918,7 +967,7 @@
             <div>
               <h4 style="color:#e0f2fe; font-size:0.92rem; margin-bottom:4px;">🎮 本機專案控制模板指令</h4>
               <p style="font-size:0.78rem; color:#94a3b8;">
-                在終端機啟動任何 AI Agent，直接複製以下指令即可全自動執行：
+                在終端機啟動任何 AI Agent（Claude Code、Codex、Antigravity、OpenCode），直接複製以下指令即可全自動執行：
               </p>
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -933,7 +982,7 @@
         </div>
 
         <div style="background:rgba(15,23,42,0.8); border:1px dashed #334155; border-radius:8px; padding:12px 14px; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <span>💡 <strong>產出自動回填：</strong>Agent 拼接完成的完整大片會自動存入 <code>shisa_colab_10s_seamless_merged.mp4</code>，您只需重新整理此網頁，即可在下方步驟四中直接播放與導出！</span>
+          <span>💡 <strong>產出自動回填：</strong>Agent 拼接完成的完整大片會自動存入 <code id="colabOutputFilenameHint" style="color:#38bdf8; font-weight:600;">okinawa_shisa_15s_seamless_merged.mp4</code>，您只需重新整理此網頁，即可在下方步驟四中直接播放與導出！</span>
         </div>
       </div>
 
@@ -1248,6 +1297,7 @@
         step3Tag.className = "badge ok";
         step3Tag.style.borderColor = "#38bdf8";
         step3Tag.style.color = "#7dd3fc";
+        renderColabPipelineTracker();
       } else if (isCloud) {
         step3Title.textContent = "步驟三：雲端並行渲染與片段生成";
         step3Tag.textContent = "雲端 API 模式";
@@ -1261,6 +1311,124 @@
         step3Tag.style.borderColor = "#f59e0b";
         step3Tag.style.color = "#fcd34d";
       }
+    }
+
+    function escapeHtml(str) {
+      if (!str) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function updateColabPromptText(segs, totalSec, slug) {
+      segs = segs || (currentPlan ? currentPlan.segments : []);
+      const count = segs.length || 1;
+      const sec = totalSec || count * 5;
+      const s = slug || (currentPlan ? currentPlan.project_slug : "okinawa_shisa");
+
+      const promptText = `請幫我下載開源專案 https://github.com/yshonlytest/film-chain 作為長影片輸入/輸出控制模板，並安裝專案內建的 \`skills/minimax-h3-colab\`（若本機尚未安裝 colab CLI，請執行 \`pip install google-colab-cli\` 並提示我完成 \`colab login\` OAuth 授權）。確認具備 Compute Units 餘額後，讀取本專案分鏡任務（共 ${count} 段，總長 ${sec} 秒），調用 Google Colab A100 GPU 依序渲染 MiniMax H3 影片，各段自動提煉前段最後一幀作為後段首幀。渲染完成後，調用本機 ffmpeg 消除重複首幀並以無縫 concat 合併為完整長影片 ${s}_${sec}s_seamless_merged.mp4，回填至網頁播放廳中。`;
+
+      const textarea1 = document.getElementById("colabPromptTextarea");
+      if (textarea1) textarea1.value = promptText;
+      return promptText;
+    }
+
+    function renderColabPipelineTracker() {
+      const container = document.getElementById("colabPipelineTracker");
+      if (!container) return;
+      const cards = document.querySelectorAll("#segmentsContainer .segment-card");
+      const segs = [];
+      cards.forEach((card, i) => {
+        segs.push({
+          title: card.querySelector(".seg-title-input")?.value.trim() || `Part ${i + 1}`,
+          end_panel: parseInt(card.querySelector(".seg-panel-select")?.value, 10) || 9,
+          prompt: card.querySelector(".seg-prompt-input")?.value.trim() || "",
+        });
+      });
+      const effectiveSegs = segs.length > 0 ? segs : (currentPlan?.segments || []);
+      const count = effectiveSegs.length || 1;
+      const totalSec = count * 5;
+      const slug = currentPlan?.project_slug || "okinawa_shisa";
+      const minTime = Math.round(count * 4.5);
+      const maxTime = Math.round(count * 5.0);
+
+      let cardsHtml = `
+        <div class="pipeline-step-card stage-init">
+          <div class="pipeline-step-num">
+            <span>前置認證</span>
+            <span>🔑</span>
+          </div>
+          <div class="pipeline-step-title">OAuth 授權與 GPU 啟動</div>
+          <div class="pipeline-step-time">約 30 秒</div>
+          <div class="pipeline-step-desc">colab login 驗證 Compute Units 餘額並指派 A100 運算單元</div>
+        </div>
+      `;
+
+      effectiveSegs.forEach((seg, idx) => {
+        const isFirst = idx === 0;
+        const startS = idx * 5;
+        const endS = (idx + 1) * 5;
+        const rawTitle = seg.title || `Part ${idx + 1}`;
+        const cleanTitle = rawTitle.replace(/^Part\s*\d+\s*\(.*?\):\s*/i, "").trim() || rawTitle;
+        const panelInfo = isFirst
+          ? `首段錨定九宮格 Panel ${seg.end_panel || 3}（124 幀 / 1376×768 音畫同步）`
+          : `自動截取 Part ${idx} 最後一幀作為本段首幀 · 錨定 Panel ${seg.end_panel || 9}`;
+
+        cardsHtml += `
+          <div class="pipeline-step-card stage-render">
+            <div class="pipeline-step-num">
+              <span>段落 ${idx + 1}/${count}</span>
+              <span>🎬</span>
+            </div>
+            <div class="pipeline-step-title">Part ${idx + 1} (${startS}-${endS}s)</div>
+            <div class="pipeline-step-time">4~5 分鐘 (A100)</div>
+            <div class="pipeline-step-desc">
+              <strong style="color:#e0f2fe;">${escapeHtml(cleanTitle)}</strong><br>
+              <span style="color:#94a3b8; font-size:0.71rem;">${panelInfo}</span>
+            </div>
+          </div>
+        `;
+      });
+
+      cardsHtml += `
+        <div class="pipeline-step-card stage-merge">
+          <div class="pipeline-step-num">
+            <span>終端縫合</span>
+            <span>⚡</span>
+          </div>
+          <div class="pipeline-step-title">FFmpeg 端側無縫拼接</div>
+          <div class="pipeline-step-time">約 1 秒 (即時完成)</div>
+          <div class="pipeline-step-desc">自動消除銜接處首格重複幀，無損 concat 輸出 <strong>${totalSec} 秒</strong> 完整長影片</div>
+        </div>
+      `;
+
+      container.innerHTML = `
+        <div class="pipeline-tracker-header">
+          <h4 style="font-size:0.92rem; color:#38bdf8; margin:0; display:flex; align-items:center; gap:8px;">
+            <span>⏱️ 雲端渲染與拼接管線進度預估 (共 ${count} 段 · 總長 ${totalSec} 秒)</span>
+            <span class="info-tip">ⓘ
+              <span class="tooltip-content">
+                <strong>💡 實測效能基準</strong><br>
+                每段 5 秒 (1376×768) 影片在 Colab A100 上實測約需 4 分 40 秒。Agent 會自動接力完成 ${count} 段渲染、尾幀傳遞與 ffmpeg 拼接。
+              </span>
+            </span>
+          </h4>
+          <span class="badge ok" style="border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.18);">
+            預估總耗時：約 ${minTime} ~ ${maxTime} 分鐘
+          </span>
+        </div>
+        <div class="pipeline-tracker-grid">
+          ${cardsHtml}
+        </div>
+      `;
+
+      const hintEl = document.getElementById("colabOutputFilenameHint");
+      if (hintEl) hintEl.textContent = `${slug}_${totalSec}s_seamless_merged.mp4`;
+
+      updateColabPromptText(effectiveSegs, totalSec, slug);
     }
 
     function copyColabPrompt() {
@@ -1292,14 +1460,21 @@
     }
 
     function exportColabManifest() {
+      const segs = syncSegmentsFromDOM();
       const plan = currentPlan || SHISA_DEFAULT_CONFIG.plan;
+      const effectiveSegs = segs.length > 0 ? segs : (plan.segments || []);
+      const count = effectiveSegs.length || 1;
+      const totalSec = count * 5;
+      const slug = plan.project_slug || "film_chain_story";
+
       const manifest = {
-        project: plan.project_slug || "film_chain_story",
-        total_seconds: plan.recommended_total_seconds || 15,
+        project: slug,
+        total_seconds: totalSec,
+        segment_count: count,
         skill: "minimax-h3-colab",
         gpu: "A100",
-        jobs: (plan.segments || []).map((seg, idx) => ({
-          id: `${plan.project_slug || "story"}_part${idx + 1}`,
+        jobs: effectiveSegs.map((seg, idx) => ({
+          id: `${slug}_part${idx + 1}`,
           title: seg.title || `Part ${idx + 1}`,
           duration_seconds: 5.0,
           end_panel: seg.end_panel,
@@ -1311,7 +1486,7 @@
       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifest, null, 2));
       const a = document.createElement("a");
       a.href = dataStr;
-      a.download = `colab_manifest_${plan.project_slug || "story"}.json`;
+      a.download = `colab_manifest_${slug}_${totalSec}s.json`;
       a.click();
     }
 
@@ -1919,6 +2094,8 @@ Return ONLY valid JSON matching this schema:
 
       const b4 = document.getElementById("step4SegmentsBadge");
       if (b4) b4.textContent = `共 ${count} 段個別影片 ＋ 1 支完整彙整總片`;
+
+      renderColabPipelineTracker();
     }
 
     function confirmStep2AndProceed() {
