@@ -556,6 +556,24 @@
       border-color: #10b981;
       background: rgba(16, 185, 129, 0.08);
     }
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.45); border-color: #38bdf8; }
+      50% { box-shadow: 0 0 16px 3px rgba(56, 189, 248, 0.75); border-color: #7dd3fc; }
+      100% { box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.45); border-color: #38bdf8; }
+    }
+    .pipeline-step-card.active-running {
+      animation: pulse-glow 2s infinite ease-in-out;
+      background: rgba(56, 189, 248, 0.14) !important;
+      border-color: #38bdf8 !important;
+    }
+    .pipeline-step-card.stage-done {
+      border-color: #10b981 !important;
+      background: rgba(16, 185, 129, 0.09) !important;
+    }
+    .pipeline-step-card.stage-error {
+      border-color: #ef4444 !important;
+      background: rgba(239, 68, 68, 0.12) !important;
+    }
     .pipeline-step-num {
       font-size: 0.72rem;
       font-weight: 700;
@@ -974,15 +992,22 @@
               <button type="button" class="primary" onclick="exportColabManifest()" style="padding:9px 18px; font-size:0.88rem; background:#0284c7; border-color:#38bdf8;">
                 📥 導出任務包 (jobs.json)
               </button>
-              <button type="button" class="btn" onclick="copyColabPrompt()" style="padding:9px 18px; font-size:0.88rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.15);">
+              <button type="button" id="copyColabPromptBtn" class="btn" onclick="copyColabPrompt()" style="padding:9px 18px; font-size:0.88rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.15);">
                 📋 一鍵複製 Agent 啟動指令
+              </button>
+              <button type="button" class="btn" onclick="openShareModal()" style="padding:9px 16px; font-size:0.88rem; border-color:#a855f7; color:#d8b4fe; background:rgba(168,85,247,0.15);">
+                📱 手機同步監看 (QR Code)
               </button>
             </div>
           </div>
         </div>
 
         <div style="background:rgba(15,23,42,0.8); border:1px dashed #334155; border-radius:8px; padding:12px 14px; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-          <span>💡 <strong>產出自動回填：</strong>Agent 拼接完成的完整大片會自動存入 <code id="colabOutputFilenameHint" style="color:#38bdf8; font-weight:600;">okinawa_shisa_15s_seamless_merged.mp4</code>，您只需重新整理此網頁，即可在下方步驟四中直接播放與導出！</span>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span id="sessionStatusDot">🟡</span>
+            <span><strong>即時中繼連線：</strong><span id="sessionStatusText">等待 Agent 連線中...</span> (<span id="sessionStatusId" style="font-family:monospace; color:#38bdf8;"></span>)</span>
+          </div>
+          <span style="color:#94a3b8; font-size:0.75rem;">💡 Agent 完片時將自動直傳雲端中繼站並自動於下方播放，免手動重整！</span>
         </div>
       </div>
 
@@ -1166,6 +1191,30 @@
     </div>
   </dialog>
 
+  <!-- Mobile QR Code & Share Modal -->
+  <dialog id="shareDialog">
+    <h3 style="margin-bottom: 8px; font-size: 1.05rem; display:flex; align-items:center; gap:8px;">
+      <span>📱 跨裝置手機同步監看</span>
+    </h3>
+    <p style="font-size:0.8rem; color:#94a3b8; line-height:1.5; margin-bottom:14px;">
+      使用手機相機掃描下方 QR Code，即可在手機瀏覽器透過相同 Session ID 實時監看終端 Agent 的 Colab 算力進度；拼接完成時，手機亦會同步收到通知並可直接串流播放或下載！
+    </p>
+    <div style="text-align:center; margin-bottom:16px;">
+      <img id="shareQrImg" src="" alt="Session QR Code" style="width:190px; height:190px; border-radius:12px; background:#fff; padding:8px; box-shadow:0 8px 24px rgba(0,0,0,0.5);" />
+      <div id="shareSessionLabel" style="font-family:monospace; font-size:0.82rem; color:#38bdf8; margin-top:8px;"></div>
+    </div>
+    <div class="form-group">
+      <label>🔗 跨裝置即時監看網址</label>
+      <div style="display:flex; gap:8px;">
+        <input type="text" id="shareUrlInput" readonly style="font-size:0.8rem; color:#93c5fd; background:#070d17;" />
+        <button type="button" class="btn" onclick="copyShareUrl()" style="white-space:nowrap; padding:6px 14px; font-size:0.8rem; border-color:#38bdf8; color:#7dd3fc;">📋 複製</button>
+      </div>
+    </div>
+    <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+      <button type="button" class="primary" onclick="document.getElementById('shareDialog').close()">關閉</button>
+    </div>
+  </dialog>
+
   <!-- ==================== Core Modular Architecture ==================== -->
   <script src="src/core/timecodeHelper.js"></script>
   <script src="src/core/promptBuilder.js"></script>
@@ -1186,6 +1235,9 @@
     let currentPlaylist = [];
     let isSeamlessPlaying = false;
     let seamlessIndex = 0;
+    let currentSessionId = "";
+    let sseSource = null;
+    let sessionPollInterval = null;
 
     const SHISA_DEFAULT_CONFIG = {
       width: 640,
@@ -1323,13 +1375,212 @@
         .replace(/'/g, "&#039;");
     }
 
+    function getOrCreateSessionId() {
+      if (currentSessionId) return currentSessionId;
+      const hashMatch = window.location.hash.match(/session=([a-zA-Z0-9_-]+)/);
+      if (hashMatch && hashMatch[1]) {
+        currentSessionId = hashMatch[1];
+        localStorage.setItem("filmchain_session_id", currentSessionId);
+        return currentSessionId;
+      }
+      const saved = localStorage.getItem("filmchain_session_id");
+      if (saved && saved.startsWith("fc_")) {
+        currentSessionId = saved;
+        return currentSessionId;
+      }
+      const d = new Date();
+      const dateStr = d.toISOString().slice(0, 10).replace(/-/g, "");
+      const rand = Math.random().toString(36).substring(2, 8);
+      currentSessionId = `fc_${dateStr}_${rand}`;
+      localStorage.setItem("filmchain_session_id", currentSessionId);
+      window.location.hash = `session=${currentSessionId}`;
+      return currentSessionId;
+    }
+
+    function playCompletionChime() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.14);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.8);
+      } catch (e) {}
+    }
+
+    function openShareModal() {
+      const sid = getOrCreateSessionId();
+      const shareUrl = `${window.location.origin}${window.location.pathname}#session=${sid}`;
+      document.getElementById("shareUrlInput").value = shareUrl;
+      document.getElementById("shareSessionLabel").textContent = `ID: ${sid}`;
+      const qrImg = document.getElementById("shareQrImg");
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(shareUrl)}`;
+      document.getElementById("shareDialog").showModal();
+    }
+
+    function copyShareUrl() {
+      const input = document.getElementById("shareUrlInput");
+      input.select();
+      navigator.clipboard.writeText(input.value).then(() => {
+        alert("已複製跨裝置監看網址！");
+      }).catch(() => {
+        document.execCommand("copy");
+        alert("已複製跨裝置監看網址！");
+      });
+    }
+
+    function startSessionListener(sessionId) {
+      if (sseSource) { sseSource.close(); sseSource = null; }
+      if (sessionPollInterval) { clearInterval(sessionPollInterval); sessionPollInterval = null; }
+
+      const dot = document.getElementById("sessionStatusDot");
+      const text = document.getElementById("sessionStatusText");
+      const idEl = document.getElementById("sessionStatusId");
+      if (idEl) idEl.textContent = sessionId;
+
+      try {
+        sseSource = new EventSource(`/api/session/${sessionId}/events`);
+        sseSource.onopen = () => {
+          if (dot) dot.textContent = "🟢";
+          if (text) text.textContent = "中繼通道已建立，監聽 Agent 訊號中";
+        };
+        sseSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            handleSessionUpdate(data);
+          } catch (e) {}
+        };
+        sseSource.onerror = () => {
+          if (sseSource) { sseSource.close(); sseSource = null; }
+          if (!sessionPollInterval) {
+            sessionPollInterval = setInterval(async () => {
+              try {
+                const res = await fetch(`/api/session/${sessionId}/status`);
+                if (res.ok) {
+                  const data = await res.json();
+                  handleSessionUpdate(data);
+                }
+              } catch (e) {}
+            }, 2000);
+          }
+        };
+      } catch (e) {
+        sessionPollInterval = setInterval(async () => {
+          try {
+            const res = await fetch(`/api/session/${sessionId}/status`);
+            if (res.ok) {
+              const data = await res.json();
+              handleSessionUpdate(data);
+            }
+          } catch (err) {}
+        }, 2000);
+      }
+    }
+
+    function handleSessionUpdate(data) {
+      if (!data || !data.stage) return;
+
+      const dot = document.getElementById("sessionStatusDot");
+      const text = document.getElementById("sessionStatusText");
+      if (dot) dot.textContent = data.status === "error" ? "🔴" : (data.status === "completed" ? "✅" : "🟢");
+      if (text) text.textContent = `${data.title || data.stage} (${data.percent || 0}%) - ${data.log || ""}`;
+
+      const card0 = document.getElementById("stage-card-0");
+      const cardMerge = document.getElementById("stage-card-merge");
+      const renderCards = document.querySelectorAll("[id^='stage-card-part-']");
+
+      if (data.stage === "stage0" || data.stage === "init") {
+        if (card0) {
+          card0.className = "pipeline-step-card stage-init active-running";
+          const timeEl = card0.querySelector(".pipeline-step-time");
+          if (timeEl) timeEl.textContent = `認證中 (${data.percent}%)`;
+        }
+      } else if (data.stage.startsWith("stage")) {
+        const partIdx = parseInt(data.stage.replace("stage", ""), 10);
+        if (card0) {
+          card0.className = "pipeline-step-card stage-init stage-done";
+          const timeEl = card0.querySelector(".pipeline-step-time");
+          if (timeEl) timeEl.textContent = "✅ 已認證";
+        }
+        renderCards.forEach((c, idx) => {
+          const currentPart = idx + 1;
+          const timeEl = c.querySelector(".pipeline-step-time");
+          if (currentPart < partIdx) {
+            c.className = "pipeline-step-card stage-render stage-done";
+            if (timeEl) timeEl.textContent = "✅ 已完成";
+          } else if (currentPart === partIdx) {
+            c.className = "pipeline-step-card stage-render active-running";
+            if (timeEl) timeEl.textContent = `推論中 (${data.percent}%)`;
+          } else {
+            c.className = "pipeline-step-card stage-render";
+          }
+        });
+      } else if (data.stage === "merge") {
+        if (card0) card0.className = "pipeline-step-card stage-init stage-done";
+        renderCards.forEach(c => {
+          c.className = "pipeline-step-card stage-render stage-done";
+          const timeEl = c.querySelector(".pipeline-step-time");
+          if (timeEl) timeEl.textContent = "✅ 已完成";
+        });
+        if (cardMerge) {
+          cardMerge.className = "pipeline-step-card stage-merge active-running";
+          const timeEl = cardMerge.querySelector(".pipeline-step-time");
+          if (timeEl) timeEl.textContent = `拼接中 (${data.percent}%)`;
+        }
+      }
+
+      if (data.status === "error") {
+        const activeCard = document.querySelector(".pipeline-step-card.active-running") || card0;
+        if (activeCard) {
+          activeCard.className = "pipeline-step-card stage-error";
+          const descEl = activeCard.querySelector(".pipeline-step-desc");
+          if (descEl) descEl.innerHTML = `<span style="color:#f87171; font-weight:700;">❌ 發生錯誤：${escapeHtml(data.error_message || "執行中斷")}</span>`;
+        }
+      }
+
+      if (data.status === "completed" || data.video_ready) {
+        if (card0) card0.className = "pipeline-step-card stage-init stage-done";
+        renderCards.forEach(c => {
+          c.className = "pipeline-step-card stage-render stage-done";
+          const timeEl = c.querySelector(".pipeline-step-time");
+          if (timeEl) timeEl.textContent = "✅ 已完成";
+        });
+        if (cardMerge) {
+          cardMerge.className = "pipeline-step-card stage-merge stage-done";
+          const timeEl = cardMerge.querySelector(".pipeline-step-time");
+          if (timeEl) timeEl.textContent = "✅ 拼接完成";
+        }
+
+        playCompletionChime();
+
+        const videoUrl = data.video_url || `/api/session/${data.session_id}/video`;
+        playVideoInStage(videoUrl, `🎉 AI Agent 雲端算力自動串流成果 (${currentPlan?.project_slug || "story"})`, true);
+
+        const s4 = document.getElementById("step4Card");
+        if (s4) s4.scrollIntoView({ behavior: "smooth" });
+      }
+    }
+
     function updateColabPromptText(segs, totalSec, slug) {
       segs = segs || (currentPlan ? currentPlan.segments : []);
       const count = segs.length || 1;
       const sec = totalSec || count * 5;
       const s = slug || (currentPlan ? currentPlan.project_slug : "okinawa_shisa");
+      const sid = getOrCreateSessionId();
 
-      const promptText = `請幫我下載開源專案 https://github.com/yshonlytest/film-chain 作為長影片輸入/輸出控制模板，並安裝專案內建的 \`skills/minimax-h3-colab\`（若本機尚未安裝 colab CLI，請執行 \`pip install google-colab-cli\` 並提示我完成 \`colab login\` OAuth 授權）。確認具備 Compute Units 餘額後，讀取本專案分鏡任務（共 ${count} 段，總長 ${sec} 秒），調用 Google Colab A100 GPU 依序渲染 MiniMax H3 影片，各段自動提煉前段最後一幀作為後段首幀。渲染完成後，調用本機 ffmpeg 消除重複首幀並以無縫 concat 合併為完整長影片 ${s}_${sec}s_seamless_merged.mp4，回填至網頁播放廳中。`;
+      const promptText = `請幫我下載開源專案 https://github.com/yshonlytest/film-chain 作為長影片輸入/輸出控制模板，並安裝專案內建的 \`skills/minimax-h3-colab\`（若本機尚未安裝 colab CLI，請執行 \`pip install google-colab-cli\` 並提示我完成 \`colab login\` OAuth 授權）。確認具備 Compute Units 餘額後，直接執行專案原生自動串接命令：
+
+python skills/minimax-h3-colab/scripts/runner.py chain --manifest colab_manifest_${s}_${sec}s.json --session-id ${sid}
+
+此命令會自動在 Colab A100 上依序完成各分鏡渲染、尾幀傳遞、FFmpeg 消幀拼接成 ${s}_${sec}s_seamless_merged.mp4，並即時回報進度與自動回傳至網頁播放廳中！`;
 
       const textarea1 = document.getElementById("colabPromptTextarea");
       if (textarea1) textarea1.value = promptText;
@@ -1356,7 +1607,7 @@
       const maxTime = Math.round(count * 5.0);
 
       let cardsHtml = `
-        <div class="pipeline-step-card stage-init">
+        <div id="stage-card-0" class="pipeline-step-card stage-init">
           <div class="pipeline-step-num">
             <span>前置認證</span>
             <span>🔑</span>
@@ -1378,7 +1629,7 @@
           : `自動截取 Part ${idx} 最後一幀作為本段首幀 · 錨定 Panel ${seg.end_panel || 9}`;
 
         cardsHtml += `
-          <div class="pipeline-step-card stage-render">
+          <div id="stage-card-part-${idx + 1}" class="pipeline-step-card stage-render">
             <div class="pipeline-step-num">
               <span>段落 ${idx + 1}/${count}</span>
               <span>🎬</span>
@@ -1394,7 +1645,7 @@
       });
 
       cardsHtml += `
-        <div class="pipeline-step-card stage-merge">
+        <div id="stage-card-merge" class="pipeline-step-card stage-merge">
           <div class="pipeline-step-num">
             <span>終端縫合</span>
             <span>⚡</span>
@@ -1429,6 +1680,9 @@
       if (hintEl) hintEl.textContent = `${slug}_${totalSec}s_seamless_merged.mp4`;
 
       updateColabPromptText(effectiveSegs, totalSec, slug);
+
+      const sid = getOrCreateSessionId();
+      startSessionListener(sid);
     }
 
     function copyColabPrompt() {

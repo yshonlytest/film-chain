@@ -16,6 +16,8 @@ import subprocess
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 import uuid
 from pathlib import Path
 from typing import Any, Callable
@@ -570,6 +572,314 @@ def run_batch(
     return progress
 
 
+class SessionRelayReporter:
+    def __init__(self, relay_url: str | None, session_id: str | None):
+        self.relay_url = (relay_url or "").rstrip("/")
+        self.session_id = session_id
+        self.enabled = bool(self.relay_url and self.session_id)
+
+    def report(
+        self,
+        stage: str,
+        *,
+        step_index: int = 0,
+        total_steps: int = 1,
+        percent: int = 0,
+        title: str = "",
+        log: str = "",
+        status: str = "running",
+        error_message: str = "",
+        video_ready: bool = False,
+    ) -> None:
+        if not self.enabled:
+            return
+        payload = {
+            "stage": stage,
+            "step_index": step_index,
+            "total_steps": total_steps,
+            "percent": percent,
+            "title": title,
+            "log": log,
+            "status": status,
+            "error_message": error_message,
+            "video_ready": video_ready,
+        }
+        url = f"{self.relay_url}/api/session/{self.session_id}/status"
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                headers={"Content-Type": "application/json; charset=utf-8"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                resp.read()
+        except Exception as exc:
+            print(f"[SessionRelay] Notice: status update failed: {exc}", file=sys.stderr)
+
+    def upload_video(self, video_path: Path) -> str | None:
+        if not self.enabled or not video_path.is_file():
+            return None
+        url = f"{self.relay_url}/api/session/{self.session_id}/video"
+        try:
+            with open(video_path, "rb") as f:
+                data = f.read()
+            req = urllib.request.Request(
+                url,
+                data=data,
+                headers={"Content-Type": "video/mp4"},
+                method="POST",
+            )
+            with urllib.request.urlopen(req, timeout=120) as resp:
+                res_data = json.loads(resp.read().decode("utf-8"))
+                return res_data.get("video_url")
+        except Exception as exc:
+            print(f"[SessionRelay] Notice: video upload failed: {exc}", file=sys.stderr)
+            return None
+
+
+def concat_chain_videos(part_paths: list[Path], final_output: Path, work_dir: Path) -> Path:
+    if not part_paths:
+        raise ValueError("No video parts to concatenate")
+    if len(part_paths) == 1:
+        shutil.copyfile(part_paths[0], final_output)
+        return final_output
+
+    trimmed_paths: list[Path] = [part_paths[0]]
+    for idx, p in enumerate(part_paths[1:], start=2):
+        trimmed = work_dir / f"trimmed_part{idx}.mp4"
+        cmd = [
+            "ffmpeg", "-y", "-ss", "0.04167", "-i", str(p),
+            "-c:v", "copy", "-c:a", "copy", str(trimmed)
+        ]
+        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+        if res.returncode != 0:
+            cmd_reencode = [
+                "ffmpeg", "-y", "-ss", "0.04167", "-i", str(p),
+                "-c:v", "libx264", "-c:a", "aac", str(trimmed)
+            ]
+            subprocess.run(cmd_reencode, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        trimmed_paths.append(trimmed)
+
+    concat_txt = work_dir / "concat_list.txt"
+    with open(concat_txt, "w", encoding="utf-8") as f:
+        for p in trimmed_paths:
+            f.write(f"file '{p.resolve()}'\n")
+
+    cmd_concat = [
+        "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+        "-i", str(concat_txt), "-c", "copy", str(final_output)
+    ]
+    res_concat = subprocess.run(cmd_concat, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+    if res_concat.returncode != 0:
+        cmd_concat_reencode = [
+            "ffmpeg", "-y", "-f", "concat", "-safe", "0",
+            "-i", str(concat_txt), "-c:v", "libx264", "-c:a", "aac", str(final_output)
+        ]
+        subprocess.run(cmd_concat_reencode, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    return final_output
+
+
+def run_chain(
+    manifest_path: Path,
+    *,
+    session_id: str | None = None,
+    relay_url: str | None = "https://film-chain.onlytest.dev",
+    session: str | None = None,
+    gpu: str = "A100",
+    high_mem: bool = True,
+    output_dir: Path = Path("output"),
+    exec_timeout: float = 3600.0,
+) -> dict[str, Any]:
+    reporter = SessionRelayReporter(relay_url, session_id)
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    raw_jobs = manifest.get("jobs", [])
+    if not raw_jobs:
+        raise ValueError("Manifest contains no jobs.")
+
+    total_jobs = len(raw_jobs)
+    slug = manifest.get("project", "story")
+    total_seconds = manifest.get("total_seconds", total_jobs * 5)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    work_dir = output_dir / f".chain_work_{uuid.uuid4().hex[:8]}"
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    reporter.report(
+        "stage0",
+        step_index=0,
+        total_steps=total_jobs + 1,
+        percent=5,
+        title="環境與授權檢測",
+        log="正在驗證 Colab OAuth 與 Compute Units 餘額，準備指派 A100 GPU...",
+    )
+
+    part_outputs: list[Path] = []
+    owns_session = session is None
+    try:
+        # Pre-check usage
+        usage = get_usage()
+        if usage["balance"] < 1.0:
+            err = f"Colab 計算單元不足 (目前餘額: {usage['balance']:.2f} units)。請確認訂閱具備 Compute Units 的方案。"
+            reporter.report(
+                "stage0",
+                step_index=0,
+                total_steps=total_jobs + 1,
+                percent=5,
+                title="授權檢測失敗",
+                status="error",
+                error_message=err,
+            )
+            raise RuntimeError(err)
+
+        if session is None:
+            session = f"h3-chain-{time.strftime('%Y%m%d-%H%M%S', time.gmtime())}-{uuid.uuid4().hex[:6]}"
+
+        reporter.report(
+            "stage0",
+            step_index=0,
+            total_steps=total_jobs + 1,
+            percent=10,
+            title="啟動 Colab GPU",
+            log=f"Colab 餘額充足 ({usage['balance']:.2f} units)，啟動 {gpu} 會話 {session}...",
+        )
+        if owns_session:
+            start_session(session, gpu, high_mem)
+
+        last_frame_png: Path | None = None
+        for idx, job in enumerate(raw_jobs):
+            part_num = idx + 1
+            part_title = job.get("title") or f"Part {part_num}"
+            pct = 10 + int((idx / (total_jobs + 1)) * 80)
+            reporter.report(
+                f"stage{part_num}",
+                step_index=part_num,
+                total_steps=total_jobs + 1,
+                percent=pct,
+                title=part_title,
+                log=f"正在運算 {part_title} (Colab A100 推論中，預計 4~5 分鐘)...",
+            )
+
+            # Resolve reference images
+            ref_imgs = job.get("reference_images") or []
+            if not ref_imgs:
+                if idx == 0:
+                    for demo_candidate in [
+                        Path("assets/demo/okinawa_shisa_ref.jpg"),
+                        Path("public/assets/demo/okinawa_shisa_ref.jpg"),
+                        manifest_path.parent / "okinawa_shisa_ref.jpg",
+                    ]:
+                        if demo_candidate.is_file():
+                            ref_imgs = [str(demo_candidate.resolve())]
+                            break
+                else:
+                    if last_frame_png and last_frame_png.is_file():
+                        ref_imgs = [str(last_frame_png.resolve())]
+
+            prompt_str = job.get("prompt", "")
+            if ref_imgs and "<Picture" not in prompt_str:
+                prompt_str = f"In <Picture 1>, {prompt_str}"
+
+            part_output = output_dir / f"{job.get('id', f'part{part_num}')}.mp4"
+            job_spec = {
+                "id": job.get("id", f"part{part_num}"),
+                "title": part_title,
+                "reference_images": ref_imgs,
+                "prompt": prompt_str,
+                "duration_seconds": float(job.get("duration_seconds", 5.0)),
+                "seed": int(job.get("seed", 20260931 + idx)),
+                "output_path": str(part_output),
+            }
+
+            single_manifest = work_dir / f"manifest_{part_num}.json"
+            single_manifest.write_text(json.dumps({"jobs": [job_spec]}, ensure_ascii=False), encoding="utf-8")
+
+            batch_res = run_batch(
+                single_manifest,
+                session=session,
+                gpu=gpu,
+                high_mem=high_mem,
+                stop_on_complete=False,
+                progress_path=None,
+                output_dir=output_dir,
+                exec_timeout=exec_timeout,
+            )
+
+            if batch_res.get("status") != "completed" or not part_output.is_file():
+                err_msg = batch_res.get("error") or f"{part_title} 推論失敗"
+                reporter.report(
+                    f"stage{part_num}",
+                    step_index=part_num,
+                    total_steps=total_jobs + 1,
+                    percent=pct,
+                    title=part_title,
+                    status="error",
+                    error_message=err_msg,
+                )
+                raise RuntimeError(err_msg)
+
+            part_outputs.append(part_output)
+
+            # Extract last frame for subsequent part
+            if part_num < total_jobs:
+                last_frame_png = work_dir / f"last_frame_part{part_num}.png"
+                cmd_frame = [
+                    "ffmpeg", "-y", "-sseof", "-0.1", "-i", str(part_output),
+                    "-update", "1", "-q:v", "2", str(last_frame_png)
+                ]
+                subprocess.run(cmd_frame, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # Merge stage
+        reporter.report(
+            "merge",
+            step_index=total_jobs,
+            total_steps=total_jobs + 1,
+            percent=90,
+            title="端側無縫拼接",
+            log="正在執行 FFmpeg 消除銜接處首格重複格並合併全片...",
+        )
+        final_merged_path = output_dir / f"{slug}_{total_seconds}s_seamless_merged.mp4"
+        concat_chain_videos(part_outputs, final_merged_path, work_dir)
+
+        # Upload stage
+        remote_video_url = None
+        if reporter.enabled:
+            reporter.report(
+                "upload",
+                step_index=total_jobs + 1,
+                total_steps=total_jobs + 1,
+                percent=96,
+                title="直傳雲端中繼站",
+                log="正在將完整影片上傳至 Cloudflare 供跨裝置即時播放...",
+            )
+            remote_video_url = reporter.upload_video(final_merged_path)
+
+        reporter.report(
+            "complete",
+            step_index=total_jobs + 1,
+            total_steps=total_jobs + 1,
+            percent=100,
+            title="全片運算與拼接就緒",
+            log=f"全片 {total_seconds} 秒已成功產出並存至 {final_merged_path}，網頁端已自動就緒！",
+            status="completed",
+            video_ready=True,
+        )
+
+        return {
+            "status": "completed",
+            "merged_output": str(final_merged_path),
+            "parts": [str(p) for p in part_outputs],
+            "remote_video_url": remote_video_url,
+        }
+    finally:
+        if owns_session and session:
+            try:
+                stop_session(session)
+            except Exception:
+                pass
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="MiniMax H3 Colab session and batch runner")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -596,6 +906,16 @@ def main() -> int:
     batch_parser.add_argument("--progress", type=Path)
     batch_parser.add_argument("--output-dir", type=Path, default=Path("output"))
     batch_parser.add_argument("--timeout", type=float, default=float(os.environ.get("COLAB_EXEC_TIMEOUT", "3600")))
+
+    chain_parser = sub.add_parser("chain", help="Render chained multi-segment video with last-frame continuity and auto-stitching")
+    chain_parser.add_argument("--manifest", type=Path, required=True)
+    chain_parser.add_argument("--session-id", default=os.environ.get("FILM_CHAIN_SESSION_ID"))
+    chain_parser.add_argument("--relay-url", default=os.environ.get("FILM_CHAIN_RELAY_URL", "https://film-chain.onlytest.dev"))
+    chain_parser.add_argument("--session", help="Reuse an existing Colab session instead of creating one")
+    chain_parser.add_argument("--gpu", default=os.environ.get("COLAB_GPU", "A100"))
+    chain_parser.add_argument("--no-high-mem", action="store_true")
+    chain_parser.add_argument("--output-dir", type=Path, default=Path("output"))
+    chain_parser.add_argument("--timeout", type=float, default=float(os.environ.get("COLAB_EXEC_TIMEOUT", "3600")))
 
     single_parser = sub.add_parser("single", help="Compatibility interface for run_colab_inference.sh")
     single_parser.add_argument("--image", "-i", action="append", required=True)
@@ -673,6 +993,19 @@ def main() -> int:
             )
             print(json.dumps(progress, ensure_ascii=False))
             return 0 if progress["status"] == "completed" else 1
+        if args.command == "chain":
+            result = run_chain(
+                args.manifest.expanduser().resolve(),
+                session_id=args.session_id,
+                relay_url=args.relay_url,
+                session=args.session,
+                gpu=args.gpu,
+                high_mem=not args.no_high_mem,
+                output_dir=args.output_dir.expanduser().resolve(),
+                exec_timeout=args.timeout,
+            )
+            print(json.dumps(result, ensure_ascii=False))
+            return 0 if result["status"] == "completed" else 1
     except Exception as exc:
         if args.command == "usage" and args.json:
             print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))

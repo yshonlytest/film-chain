@@ -70,6 +70,15 @@ FAKE_FFPROBE = r'''#!PYTHON_EXECUTABLE
 print('{"streams":[{"codec_type":"video"},{"codec_type":"audio"}]}')
 '''
 
+FAKE_FFMPEG = r'''#!PYTHON_EXECUTABLE
+import sys, pathlib
+args = sys.argv[1:]
+if args:
+    target = pathlib.Path(args[-1])
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_bytes(b"fake ffmpeg output")
+'''
+
 
 class RunnerTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -77,7 +86,7 @@ class RunnerTests(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.fake_bin = self.root / "bin"
         self.fake_bin.mkdir()
-        for name, content in (("colab", FAKE_COLAB), ("ffprobe", FAKE_FFPROBE)):
+        for name, content in (("colab", FAKE_COLAB), ("ffprobe", FAKE_FFPROBE), ("ffmpeg", FAKE_FFMPEG)):
             path = self.fake_bin / name
             path.write_text(content.replace("PYTHON_EXECUTABLE", sys.executable), encoding="utf-8")
             path.chmod(0o755)
@@ -233,6 +242,83 @@ class RunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Picture"):
             runner.resolve_jobs(data, self.root / "output")
 
+    def test_session_relay_reporter_sends_post_requests(self) -> None:
+        calls = []
+
+        class FakeResponse:
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+            def read(self):
+                return b'{"ok": true, "video_url": "/api/session/test/video"}'
+
+        def fake_urlopen(req, timeout=10):
+            calls.append({"url": req.full_url, "data": req.data, "headers": req.headers})
+            return FakeResponse()
+
+        with patch("urllib.request.urlopen", side_effect=fake_urlopen):
+            reporter = runner.SessionRelayReporter("https://film-chain.onlytest.dev", "session_abc")
+            reporter.report("render", percent=50, title="Part 1", log="Rendering...")
+            self.assertEqual(len(calls), 1)
+            self.assertEqual(calls[0]["url"], "https://film-chain.onlytest.dev/api/session/session_abc/status")
+            payload = json.loads(calls[0]["data"].decode("utf-8"))
+            self.assertEqual(payload["percent"], 50)
+            self.assertEqual(payload["stage"], "render")
+
+            fake_video = self.root / "test.mp4"
+            fake_video.write_bytes(b"dummy video data")
+            video_url = reporter.upload_video(fake_video)
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[1]["url"], "https://film-chain.onlytest.dev/api/session/session_abc/video")
+            self.assertEqual(video_url, "/api/session/test/video")
+
+    def test_run_chain_executes_sequential_jobs_and_merges(self) -> None:
+        manifest_data = {
+            "project": "test_chain",
+            "total_seconds": 10,
+            "jobs": [
+                {
+                    "id": "part1",
+                    "title": "Part 1 (0-5s)",
+                    "prompt": "prompt 1",
+                    "duration_seconds": 5,
+                    "seed": 101,
+                    "reference_images": [str(self.root / "ref.png")],
+                },
+                {
+                    "id": "part2",
+                    "title": "Part 2 (5-10s)",
+                    "prompt": "prompt 2",
+                    "duration_seconds": 5,
+                    "seed": 102,
+                }
+            ]
+        }
+        ref_img = self.root / "ref.png"
+        ref_img.write_bytes(b"fake ref")
+        manifest_path = self.root / "chain_manifest.json"
+        manifest_path.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+        output_dir = self.root / "chain_output"
+        result = runner.run_chain(
+            manifest_path,
+            session_id=None,
+            relay_url=None,
+            session=None,
+            gpu="A100",
+            high_mem=False,
+            output_dir=output_dir,
+            exec_timeout=60,
+        )
+
+        self.assertEqual(result["status"], "completed")
+        merged_path = Path(result["merged_output"])
+        self.assertTrue(merged_path.is_file())
+        self.assertEqual(merged_path.name, "test_chain_10s_seamless_merged.mp4")
+        self.assertEqual(len(result["parts"]), 2)
+
 
 if __name__ == "__main__":
     unittest.main()
+
