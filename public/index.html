@@ -672,19 +672,23 @@
         </div>
       </div>
 
-      <!-- ☁️ 路線 1: Google Colab Agent Prompt 卡片（預設顯示） -->
-      <div id="step1ColabPromptBox" style="background:#091426; border:1.5px solid #0284c7; border-radius:10px; padding:12px 14px; margin-bottom:16px; box-shadow:0 4px 14px rgba(2,132,199,0.15);">
+      <!-- ☁️ 路線 1: Google Colab Agent Prompt 卡片（預設推薦 · Gemini Pro 以上用戶限定） -->
+      <div id="step1ColabPromptBox" style="background:#091426; border:1.5px solid #0284c7; border-radius:10px; padding:14px; margin-bottom:16px; box-shadow:0 4px 16px rgba(2,132,199,0.2);">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
-          <div style="font-size:0.86rem; color:#e0f2fe; display:flex; align-items:center; gap:6px;">
-            <span>☁️</span>
-            <span><strong>Google Colab 算力流：</strong>免本地高階顯卡，一鍵複製指令交給 Gemini / Coding Agent 自動渲染與縫合長片：</span>
+          <div style="font-size:0.88rem; color:#e0f2fe; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.1rem;">☁️</span>
+            <span><strong style="color:#38bdf8;">【Gemini Advanced / Pro 用戶限定】跨平台 AI Agent 雲端算力流</strong></span>
+            <span class="badge ok" style="font-size:0.68rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.2);">Claude Code · Codex · Antigravity 通用</span>
           </div>
-          <button type="button" id="copyColabPromptBtn" class="btn" onclick="copyColabPrompt()" style="padding:5px 14px; font-size:0.8rem; background:rgba(56,189,248,0.22); border-color:#38bdf8; color:#7dd3fc; font-weight:700;">
-            📋 複製 Colab Agent 指令
+          <button type="button" id="copyColabPromptBtn" class="btn" onclick="copyColabPrompt()" style="padding:6px 16px; font-size:0.82rem; background:rgba(56,189,248,0.22); border-color:#38bdf8; color:#7dd3fc; font-weight:700;">
+            📋 複製 Agent 自動執行指令
           </button>
         </div>
-        <div style="font-size:0.75rem; color:#7dd3fc; margin-bottom:4px; opacity:0.85;">▼ 終端 Agent 指令內容預覽（包含自動下載 skill、Colab A100 運算與 ffmpeg 拼接）：</div>
-        <textarea id="colabPromptTextarea" readonly style="width:100%; height:74px; background:#040a14; color:#93c5fd; border:1px solid #1e3a5f; border-radius:6px; font-family:monospace; font-size:0.76rem; padding:8px 10px; line-height:1.45; resize:none;">請幫我使用 `minimax-h3-colab` skill，參考 https://film-chain.onlytest.dev 的分鏡計畫與參考圖，透過 Google Colab A100 GPU 依序執行 MiniMax H3 分段影片渲染。渲染完成後，請自動使用本地 ffmpeg 剪除後續分段的首幀重複畫面，並以無縫 concat 合併為完整長影片。</textarea>
+        <div style="font-size:0.78rem; color:#94a3b8; line-height:1.5; margin-bottom:8px;">
+          💡 <strong>方案限制與授權說明：</strong>本工作流利用 Google 訂閱贈送之每月 Compute Units 啟動雲端 A100 GPU；首次使用需在本機終端執行 <code>colab login</code> 完成 Google OAuth 授權（若尚未安裝 CLI，指令會自動引導安裝）。零本機顯卡負擔！
+        </div>
+        <div style="font-size:0.75rem; color:#7dd3fc; margin-bottom:4px; opacity:0.9;">▼ 終端 Agent 完整執行指令預覽（支援全自動安裝 skill、授權引導、A100 排程生成與 ffmpeg 無縫縫合）：</div>
+        <textarea id="colabPromptTextarea" readonly style="width:100%; height:82px; background:#040a14; color:#93c5fd; border:1px solid #1e3a5f; border-radius:6px; font-family:monospace; font-size:0.76rem; padding:8px 10px; line-height:1.45; resize:none;">請幫我下載開源專案 https://github.com/yshonlytest/film-chain 作為長影片輸入/輸出控制模板，並安裝專案內建的 `skills/minimax-h3-colab`（若本機尚未安裝 colab CLI，請執行 `pip install google-colab-cli` 並提示我完成 `colab login` OAuth 授權）。確認具備 Compute Units 餘額後，讀取本專案分鏡任務，調用 Google Colab A100 GPU 依序渲染 MiniMax H3 影片，完成後自動調用本機 ffmpeg 消除重複首幀並以無縫 concat 合併為完整長影片，回填至網頁播放廳中。</textarea>
       </div>
 
       <!-- 🤖 路線 3: 本機 ComfyUI Agent 環境對齊卡片（僅在選取路線 3 時顯示） -->
@@ -863,28 +867,73 @@
 
       <!-- Mode 1: Google Colab (Gemini Pro Agent) Panel (預設推薦) -->
       <div id="panelColabView">
-        <div style="background: rgba(56, 189, 248, 0.1); border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; font-size: 0.86rem; color: #e0f2fe; line-height: 1.6;">
-          <strong style="color:#7dd3fc; font-size:0.95rem;">☁️ 路線 1：Google Colab (Gemini Pro Agent) 運作原理</strong><br>
-          本工作流將剛才規劃的分鏡、多圖錨定與時間軸規格打包為專屬 Manifest，交由終端 AI Agent（如 Antigravity / Claude Code / Gemini CLI）調用 <code>minimax-h3-colab</code> skill 在遠端 Colab A100 GPU 自動排程生成各分段，並由本地 <code>ffmpeg</code> 自動修剪首幀無縫拼接成 1376×768 超高畫質大片！
-        </div>
-
-        <div style="background:#091222; border:1px solid #1e3a5f; border-radius:10px; padding:14px; margin-bottom:16px;">
-          <h4 style="color:#38bdf8; font-size:0.9rem; margin-bottom:8px;">📦 一鍵打包 Colab 任務檔</h4>
-          <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;">
-            點擊下方按鈕可將當前分鏡計畫導出為 <code>colab_jobs.json</code>，或複製專屬終端執行指令：
-          </p>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <button type="button" class="primary" onclick="exportColabManifest()" style="padding:8px 16px; font-size:0.86rem; background:#0284c7; border-color:#38bdf8;">
-              📥 下載 Colab 任務包 (jobs.json)
-            </button>
-            <button type="button" class="btn" onclick="copyColabPrompt()" style="padding:8px 16px; font-size:0.86rem; border-color:#38bdf8; color:#7dd3fc;">
-              📋 複製終端 Agent 執行指令
-            </button>
+        <div style="background: rgba(56, 189, 248, 0.08); border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 16px 18px; margin-bottom: 18px; line-height: 1.6;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:6px;">
+            <strong style="color:#7dd3fc; font-size:1.02rem;">☁️ 路線 1：AI Agent 雲端算力中控台 (Google Colab A100)</strong>
+            <span class="badge ok" style="border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.2);">全自動無縫縫合</span>
+          </div>
+          <div style="font-size:0.84rem; color:#cbd5e1;">
+            本網頁作為您的<strong>「影視視覺審稿中樞」</strong>，已將九宮格視覺錨點與時間軸對白組裝完成。將此專案作為控制模板交給終端 AI Agent（Claude Code、Codex、Antigravity 等），Agent 將在背景調用 Colab A100 GPU 依序推論並自動縫合！
           </div>
         </div>
 
-        <div style="background:#0c172a; border:1px dashed #334155; border-radius:8px; padding:12px 14px; font-size:0.78rem; color:#94a3b8;">
-          💡 <strong>實測數據參考：</strong>在 Google Colab A100 GPU 上，每段 5 秒高畫質 (1376×768) 影音生成耗時僅約 4 分 40 秒，自動銜接無任何卡頓，零本地顯存要求！
+        <!-- 4-Stage Visual Workflow Tracker -->
+        <div style="background:#0b1322; border:1px solid #1e3a5f; border-radius:12px; padding:16px; margin-bottom:18px;">
+          <h4 style="font-size:0.92rem; color:#38bdf8; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+            <span>⏱️ 雲端渲染與拼接管線進度預估 (Pipeline Timeline)</span>
+            <span class="info-tip">ⓘ
+              <span class="tooltip-content">
+                <strong>💡 實測效能基準</strong><br>
+                每段 5 秒 (1376×768) 影片約耗時 4 分 40 秒。Agent 會在終端機自動接力完成各段渲染、尾幀傳遞與最後的 ffmpeg 拼接。
+              </span>
+            </span>
+          </h4>
+          <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:10px;">
+            <div style="background:#070e1b; border:1px solid #1e293b; border-radius:8px; padding:10px 12px;">
+              <div style="font-size:0.75rem; color:#94a3b8;">階段一：環境與認證</div>
+              <div style="font-size:0.88rem; font-weight:700; color:#38bdf8; margin:4px 0;">OAuth 授權檢測</div>
+              <div style="font-size:0.72rem; color:#64748b;">驗證 Compute Units 餘額</div>
+            </div>
+            <div style="background:#070e1b; border:1px solid #1e293b; border-radius:8px; padding:10px 12px;">
+              <div style="font-size:0.75rem; color:#94a3b8;">階段二：Part 1 甦醒伸展</div>
+              <div style="font-size:0.88rem; font-weight:700; color:#e0f2fe; margin:4px 0;">4~5 分鐘</div>
+              <div style="font-size:0.72rem; color:#64748b;">124 幀 / 1376×768 音畫同步</div>
+            </div>
+            <div style="background:#070e1b; border:1px solid #1e293b; border-radius:8px; padding:10px 12px;">
+              <div style="font-size:0.75rem; color:#94a3b8;">階段三：Part 2 尾幀接首幀</div>
+              <div style="font-size:0.88rem; font-weight:700; color:#e0f2fe; margin:4px 0;">4~5 分鐘</div>
+              <div style="font-size:0.72rem; color:#64748b;">提取最後一幀接續拋球雜耍</div>
+            </div>
+            <div style="background:#070e1b; border:1px solid #10b981; border-radius:8px; padding:10px 12px; background:rgba(16,185,129,0.06);">
+              <div style="font-size:0.75rem; color:#6ee7b7;">階段四：端側拼接</div>
+              <div style="font-size:0.88rem; font-weight:700; color:#34d399; margin:4px 0;">約 1 秒 (即時)</div>
+              <div style="font-size:0.72rem; color:#6ee7b7;">ffmpeg 自動消幀無縫合併</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Control Hub -->
+        <div style="background:#091222; border:1px solid #1e3a5f; border-radius:12px; padding:16px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h4 style="color:#e0f2fe; font-size:0.92rem; margin-bottom:4px;">🎮 本機專案控制模板指令</h4>
+              <p style="font-size:0.78rem; color:#94a3b8;">
+                在終端機啟動任何 AI Agent，直接複製以下指令即可全自動執行：
+              </p>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <button type="button" class="primary" onclick="exportColabManifest()" style="padding:9px 18px; font-size:0.88rem; background:#0284c7; border-color:#38bdf8;">
+                📥 導出任務包 (jobs.json)
+              </button>
+              <button type="button" class="btn" onclick="copyColabPrompt()" style="padding:9px 18px; font-size:0.88rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.15);">
+                📋 一鍵複製 Agent 啟動指令
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:rgba(15,23,42,0.8); border:1px dashed #334155; border-radius:8px; padding:12px 14px; font-size:0.8rem; color:#94a3b8; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <span>💡 <strong>產出自動回填：</strong>Agent 拼接完成的完整大片會自動存入 <code>shisa_colab_10s_seamless_merged.mp4</code>，您只需重新整理此網頁，即可在下方步驟四中直接播放與導出！</span>
         </div>
       </div>
 
