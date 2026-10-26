@@ -155,11 +155,11 @@
     }
     .route-tabs {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, 1fr);
       gap: 14px;
       margin-top: 12px;
     }
-    @media (max-width: 680px) { .route-tabs { grid-template-columns: 1fr; } }
+    @media (max-width: 960px) { .route-tabs { grid-template-columns: 1fr; } }
 
     .route-tab-card {
       border: 2px solid #222f46;
@@ -171,15 +171,20 @@
       position: relative;
     }
     .route-tab-card:hover { border-color: #3e5275; }
-    .route-tab-card.active.local {
-      border-color: var(--accent);
-      background: rgba(99, 102, 241, 0.14);
-      box-shadow: 0 0 18px rgba(99, 102, 241, 0.25);
+    .route-tab-card.active.colab {
+      border-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.14);
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.25);
     }
     .route-tab-card.active.cloud {
       border-color: #10b981;
       background: rgba(16, 185, 129, 0.14);
       box-shadow: 0 0 18px rgba(16, 185, 129, 0.25);
+    }
+    .route-tab-card.active.local {
+      border-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.14);
+      box-shadow: 0 0 18px rgba(245, 158, 11, 0.25);
     }
     .route-tab-title {
       font-size: 0.98rem;
@@ -609,32 +614,47 @@
           <span>🔀 選擇渲染模式 (Rendering Pipeline)</span>
           <span class="info-tip">ⓘ
             <span class="tooltip-content">
-              <strong>💡 雙引擎完全隔離</strong><br>
-              選擇後，「步驟三」會自動切換為對應的專屬渲染面板與控制參數。
+              <strong>💡 三條獨立渲染工作流</strong><br>
+              • 路線 1 (預設推薦)：Google Colab + Gemini Agent 自動化工作流。<br>
+              • 路線 2：商用雲端首尾幀模型 API（Seedance / fal.ai）。<br>
+              • 路線 3：本機 ComfyUI 高門檻示範工作流。
             </span>
           </span>
         </strong>
-        <span id="currentRouteBadge" class="badge warn">目前模式：⚡ 雲端極速渲染引擎</span>
+        <span id="currentRouteBadge" class="badge ok" style="border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.15);">目前模式：☁️ Google Colab (Gemini Pro Agent)</span>
       </div>
 
       <div class="route-tabs">
-        <div id="routeCardLocal" class="route-tab-card" role="button" tabindex="0" onclick="selectRoute('local')" onkeydown="if(event.key==='Enter'||event.key===' ')selectRoute('local')">
+        <!-- 路線 1: Google Colab (預設推薦) -->
+        <div id="routeCardColab" class="route-tab-card active colab" role="button" tabindex="0" onclick="selectRoute('colab')" onkeydown="if(event.key==='Enter'||event.key===' ')selectRoute('colab')">
           <div class="route-tab-title">
-            <span>🖥️ 本地配置示範 (Local Pipeline Demo)</span>
-            <span class="badge ok" style="font-size:0.7rem;">本機算力 · Agent對齊</span>
+            <span style="color:#7dd3fc;">☁️ 路線 1：Google Colab (Gemini Pro)</span>
+            <span class="badge ok" style="font-size:0.7rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.2);">預設推薦 · A100雲端</span>
           </div>
           <div class="route-tab-desc">
-            以本地 ComfyUI + MiniMax-H3 架構作為示範。因各主機硬體與外掛差異，建議搭配下方一鍵 Prompt 由 AI Agent 自主對齊安裝。
+            無需高階顯卡！一鍵打包 Manifest 交由終端 Gemini / Coding Agent 調用 Colab A100 自動生成每段並由 ffmpeg 縫合。
           </div>
         </div>
 
-        <div id="routeCardCloud" class="route-tab-card active cloud" role="button" tabindex="0" onclick="selectRoute('cloud')" onkeydown="if(event.key==='Enter'||event.key===' ')selectRoute('cloud')">
+        <!-- 路線 2: 商業雲端 API -->
+        <div id="routeCardCloud" class="route-tab-card" role="button" tabindex="0" onclick="selectRoute('cloud')" onkeydown="if(event.key==='Enter'||event.key===' ')selectRoute('cloud')">
           <div class="route-tab-title">
-            <span>⚡ 雲端極速渲染引擎 (Cloud Engine)</span>
-            <span class="badge warn" style="font-size:0.7rem;">雲端高速 · 按需調用</span>
+            <span style="color:#a7f3d0;">⚡ 路線 2：商用雲端 API (Seedance / fal.ai)</span>
+            <span class="badge warn" style="font-size:0.7rem;">雲端極速 · 按量計費</span>
           </div>
           <div class="route-tab-desc">
-            免本機顯卡運算，直接調用雲端首尾幀控制模型集群（ByteDance Seedance / fal.ai 等）進行並行渲染，1~2 分鐘高效產出。
+            填入第三方文字、圖片與 Seedance / fal.ai API Key，直接由瀏覽器透過雲端模型集群並行渲染，1~2 分鐘快速出片。
+          </div>
+        </div>
+
+        <!-- 路線 3: 本地 ComfyUI (高技術門檻) -->
+        <div id="routeCardLocal" class="route-tab-card" role="button" tabindex="0" onclick="selectRoute('local')" onkeydown="if(event.key==='Enter'||event.key===' ')selectRoute('local')">
+          <div class="route-tab-title">
+            <span style="color:#fcd34d;">🖥️ 路線 3：本機 ComfyUI (高門檻)</span>
+            <span class="badge ok" style="font-size:0.7rem; border-color:#f59e0b; color:#fcd34d; background:rgba(245,158,11,0.2);">本地顯卡 · 硬體門檻</span>
+          </div>
+          <div class="route-tab-desc">
+            需本地安裝 ComfyUI 與數十 GB 模型權重。提供示範工作流與 Agent 自動偵測對齊 Prompt，資產不離本機。
           </div>
         </div>
       </div>
@@ -652,15 +672,30 @@
         </div>
       </div>
 
-      <!-- 🤖 AI Agent 本地環境對齊卡片（僅在選擇「本地配置示範」時動態顯示） -->
-      <div id="step1AgentPromptBox" style="display:none; background:#091222; border:1px solid #1e3a5f; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
+      <!-- ☁️ 路線 1: Google Colab Agent Prompt 卡片（預設顯示） -->
+      <div id="step1ColabPromptBox" style="background:#091426; border:1.5px solid #0284c7; border-radius:10px; padding:12px 14px; margin-bottom:16px; box-shadow:0 4px 14px rgba(2,132,199,0.15);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
+          <div style="font-size:0.86rem; color:#e0f2fe; display:flex; align-items:center; gap:6px;">
+            <span>☁️</span>
+            <span><strong>Google Colab 算力流：</strong>免本地高階顯卡，一鍵複製指令交給 Gemini / Coding Agent 自動渲染與縫合長片：</span>
+          </div>
+          <button type="button" id="copyColabPromptBtn" class="btn" onclick="copyColabPrompt()" style="padding:5px 14px; font-size:0.8rem; background:rgba(56,189,248,0.22); border-color:#38bdf8; color:#7dd3fc; font-weight:700;">
+            📋 複製 Colab Agent 指令
+          </button>
+        </div>
+        <div style="font-size:0.75rem; color:#7dd3fc; margin-bottom:4px; opacity:0.85;">▼ 終端 Agent 指令內容預覽（包含自動下載 skill、Colab A100 運算與 ffmpeg 拼接）：</div>
+        <textarea id="colabPromptTextarea" readonly style="width:100%; height:74px; background:#040a14; color:#93c5fd; border:1px solid #1e3a5f; border-radius:6px; font-family:monospace; font-size:0.76rem; padding:8px 10px; line-height:1.45; resize:none;">請幫我使用 `minimax-h3-colab` skill，參考 https://film-chain.onlytest.dev 的分鏡計畫與參考圖，透過 Google Colab A100 GPU 依序執行 MiniMax H3 分段影片渲染。渲染完成後，請自動使用本地 ffmpeg 剪除後續分段的首幀重複畫面，並以無縫 concat 合併為完整長影片。</textarea>
+      </div>
+
+      <!-- 🤖 路線 3: 本機 ComfyUI Agent 環境對齊卡片（僅在選取路線 3 時顯示） -->
+      <div id="step1AgentPromptBox" style="display:none; background:#091222; border:1px solid #f59e0b; border-radius:10px; padding:12px 14px; margin-bottom:16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:8px;">
           <div style="font-size:0.86rem; color:#cbd5e1; display:flex; align-items:center; gap:6px;">
             <span>🤖</span>
             <span>因每台電腦硬體與 ComfyUI 節點配置互不相同，建議交給 AI Agent 自動偵測安裝與對齊：</span>
           </div>
-          <button type="button" id="copyAgentPromptBtn" class="btn" onclick="copyAgentPrompt()" style="padding:5px 14px; font-size:0.8rem; background:rgba(56,189,248,0.18); border-color:#38bdf8; color:#7dd3fc; font-weight:600;">
-            📋 複製 Agent Prompt
+          <button type="button" id="copyAgentPromptBtn" class="btn" onclick="copyAgentPrompt()" style="padding:5px 14px; font-size:0.8rem; background:rgba(245,158,11,0.18); border-color:#f59e0b; color:#fcd34d; font-weight:600;">
+            📋 複製本機對齊 Prompt
           </button>
         </div>
         <div style="font-size:0.75rem; color:#64748b; margin-bottom:4px;">▼ 指令內容預覽（可直接點擊上方按鈕一鍵複製）：</div>
@@ -826,37 +861,34 @@
         <span id="step3RouteTag" class="badge ok">本地工作流模式</span>
       </div>
 
-      <!-- Mode A: Local ComfyUI Panel -->
-      <div id="panelLocalView">
-        <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #a7f3d0;">
-          <strong>⚡ 本地渲染管線（ComfyUI 架構）：</strong><br>
-          已完成本地環境對齊後，可在此選擇檔位直接調用本地 ComfyUI API 進行逐段排程渲染與自動拼接。
+      <!-- Mode 1: Google Colab (Gemini Pro Agent) Panel (預設推薦) -->
+      <div id="panelColabView">
+        <div style="background: rgba(56, 189, 248, 0.1); border: 1.5px solid rgba(56, 189, 248, 0.35); border-radius: 10px; padding: 14px 16px; margin-bottom: 16px; font-size: 0.86rem; color: #e0f2fe; line-height: 1.6;">
+          <strong style="color:#7dd3fc; font-size:0.95rem;">☁️ 路線 1：Google Colab (Gemini Pro Agent) 運作原理</strong><br>
+          本工作流將剛才規劃的分鏡、多圖錨定與時間軸規格打包為專屬 Manifest，交由終端 AI Agent（如 Antigravity / Claude Code / Gemini CLI）調用 <code>minimax-h3-colab</code> skill 在遠端 Colab A100 GPU 自動排程生成各分段，並由本地 <code>ffmpeg</code> 自動修剪首幀無縫拼接成 1376×768 超高畫質大片！
         </div>
 
-        <div class="form-group">
-          <label>⚡ 選擇本地渲染畫質 / 速度檔位（本地環境已就緒時適用）</label>
-          <div class="speed-options">
-            <div class="speed-option active" data-speed="quality" onclick="selectSpeed('quality')">
-              <h4>🎬 預設方案 (推薦 / 畫質最穩)</h4>
-              <p>20 Steps · 640×480 · 124幀 · 自動剪首幀與尾幀接首幀（畫質最穩）</p>
-            </div>
-            <div class="speed-option" data-speed="balanced" onclick="selectSpeed('balanced')">
-              <h4>⚖️ 平衡加速模式</h4>
-              <p>14 Steps + Core Reuse 4 + Token 縮減（約快 2.2 倍）</p>
-            </div>
-            <div class="speed-option" data-speed="fast" onclick="selectSpeed('fast')">
-              <h4>⚡ 極速測試預覽</h4>
-              <p>6 Steps + 512×384 內部渲染（約 4~6 分鐘/段）</p>
-            </div>
+        <div style="background:#091222; border:1px solid #1e3a5f; border-radius:10px; padding:14px; margin-bottom:16px;">
+          <h4 style="color:#38bdf8; font-size:0.9rem; margin-bottom:8px;">📦 一鍵打包 Colab 任務檔</h4>
+          <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;">
+            點擊下方按鈕可將當前分鏡計畫導出為 <code>colab_jobs.json</code>，或複製專屬終端執行指令：
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="primary" onclick="exportColabManifest()" style="padding:8px 16px; font-size:0.86rem; background:#0284c7; border-color:#38bdf8;">
+              📥 下載 Colab 任務包 (jobs.json)
+            </button>
+            <button type="button" class="btn" onclick="copyColabPrompt()" style="padding:8px 16px; font-size:0.86rem; border-color:#38bdf8; color:#7dd3fc;">
+              📋 複製終端 Agent 執行指令
+            </button>
           </div>
         </div>
 
-        <button type="button" id="startLocalVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeLocalComfyStep()">
-          🎬 啟動本地管線渲染（排程生成與自動合併）
-        </button>
+        <div style="background:#0c172a; border:1px dashed #334155; border-radius:8px; padding:12px 14px; font-size:0.78rem; color:#94a3b8;">
+          💡 <strong>實測數據參考：</strong>在 Google Colab A100 GPU 上，每段 5 秒高畫質 (1376×768) 影音生成耗時僅約 4 分 40 秒，自動銜接無任何卡頓，零本地顯存要求！
+        </div>
       </div>
 
-      <!-- Mode B: Cloud Seedance Panel -->
+      <!-- Mode 2: Cloud API Panel (Seedance / fal.ai) -->
       <div id="panelCloudView" style="display:none;">
         <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #cbd5e1;">
           <strong>☁️ 雲端並行渲染說明：</strong><br>
@@ -883,6 +915,36 @@
 
         <button type="button" id="startCloudVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeCloudVideoStep()">
           🚀 啟動雲端並行渲染（預計 1~2 分鐘完成）
+        </button>
+      </div>
+
+      <!-- Mode 3: Local ComfyUI Panel (高技術門檻) -->
+      <div id="panelLocalView" style="display:none;">
+        <div style="background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #fcd34d;">
+          <strong>🖥️ 本地渲染管線（ComfyUI 架構）：</strong><br>
+          已完成本地環境對齊後，可在此選擇檔位直接調用本地 ComfyUI API 進行逐段排程渲染與自動拼接。
+        </div>
+
+        <div class="form-group">
+          <label>⚡ 選擇本地渲染畫質 / 速度檔位（本地環境已就緒時適用）</label>
+          <div class="speed-options">
+            <div class="speed-option active" data-speed="quality" onclick="selectSpeed('quality')">
+              <h4>🎬 預設方案 (推薦 / 畫質最穩)</h4>
+              <p>20 Steps · 640×480 · 124幀 · 自動剪首幀與尾幀接首幀（畫質最穩）</p>
+            </div>
+            <div class="speed-option" data-speed="balanced" onclick="selectSpeed('balanced')">
+              <h4>⚖️ 平衡加速模式</h4>
+              <p>14 Steps + Core Reuse 4 + Token 縮減（約快 2.2 倍）</p>
+            </div>
+            <div class="speed-option" data-speed="fast" onclick="selectSpeed('fast')">
+              <h4>⚡ 極速測試預覽</h4>
+              <p>6 Steps + 512×384 內部渲染（約 4~6 分鐘/段）</p>
+            </div>
+          </div>
+        </div>
+
+        <button type="button" id="startLocalVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeLocalComfyStep()">
+          🎬 啟動本地管線渲染（排程生成與自動合併）
         </button>
       </div>
 
@@ -1014,7 +1076,7 @@
 
   <script>
     // ==================== Global State ====================
-    let activeRoute = "cloud"; // 'local' or 'cloud'
+    let activeRoute = "colab"; // 'colab', 'cloud', or 'local'
     let refImageBase64 = "";
     let refImageMime = "image/jpeg";
     let gridImageDataUrl = "";
@@ -1080,37 +1142,128 @@
 
     // ==================== Route Switching (Sets context for Step 3) ====================
     function selectRoute(route) {
-      activeRoute = route;
+      activeRoute = route; // 'colab', 'cloud', or 'local'
+
+      const isColab = route === "colab";
+      const isCloud = route === "cloud";
       const isLocal = route === "local";
 
-      document.getElementById("routeCardLocal").className = `route-tab-card ${isLocal ? "active local" : ""}`;
-      document.getElementById("routeCardCloud").className = `route-tab-card ${!isLocal ? "active cloud" : ""}`;
+      const cardColab = document.getElementById("routeCardColab");
+      const cardCloud = document.getElementById("routeCardCloud");
+      const cardLocal = document.getElementById("routeCardLocal");
+
+      if (cardColab) cardColab.className = `route-tab-card ${isColab ? "active colab" : ""}`;
+      if (cardCloud) cardCloud.className = `route-tab-card ${isCloud ? "active cloud" : ""}`;
+      if (cardLocal) cardLocal.className = `route-tab-card ${isLocal ? "active local" : ""}`;
 
       const badge = document.getElementById("currentRouteBadge");
-      badge.textContent = isLocal ? "目前模式：🖥️ 本地配置示範" : "目前模式：⚡ 雲端極速渲染引擎";
-      badge.className = `badge ${isLocal ? "ok" : "warn"}`;
-
-      // Update Step 1 Agent Prompt Box (Only shown in local route)
-      const agentBox = document.getElementById("step1AgentPromptBox");
-      if (agentBox) {
-        agentBox.style.display = isLocal ? "block" : "none";
+      if (isColab) {
+        badge.textContent = "目前模式：☁️ Google Colab (Gemini Pro Agent)";
+        badge.className = "badge ok";
+        badge.style.borderColor = "#38bdf8";
+        badge.style.color = "#7dd3fc";
+        badge.style.background = "rgba(56,189,248,0.15)";
+      } else if (isCloud) {
+        badge.textContent = "目前模式：⚡ 商業雲端 API (Seedance / fal.ai)";
+        badge.className = "badge warn";
+        badge.style.borderColor = "";
+        badge.style.color = "";
+        badge.style.background = "";
+      } else {
+        badge.textContent = "目前模式：🖥️ 本機 ComfyUI (高技術門檻)";
+        badge.className = "badge ok";
+        badge.style.borderColor = "#f59e0b";
+        badge.style.color = "#fcd34d";
+        badge.style.background = "rgba(245,158,11,0.15)";
       }
 
-      // Update Step 3 View
-      document.getElementById("panelLocalView").style.display = isLocal ? "block" : "none";
-      document.getElementById("panelCloudView").style.display = isLocal ? "none" : "block";
+      // Update Step 1 Prompt Boxes
+      const colabBox = document.getElementById("step1ColabPromptBox");
+      const localBox = document.getElementById("step1AgentPromptBox");
+      if (colabBox) colabBox.style.display = isColab ? "block" : "none";
+      if (localBox) localBox.style.display = isLocal ? "block" : "none";
+
+      // Update Step 3 View Panels
+      const panelColab = document.getElementById("panelColabView");
+      const panelCloud = document.getElementById("panelCloudView");
+      const panelLocal = document.getElementById("panelLocalView");
+      if (panelColab) panelColab.style.display = isColab ? "block" : "none";
+      if (panelCloud) panelCloud.style.display = isCloud ? "block" : "none";
+      if (panelLocal) panelLocal.style.display = isLocal ? "block" : "none";
 
       const step3Title = document.getElementById("step3TitleText");
       const step3Tag = document.getElementById("step3RouteTag");
-      if (isLocal) {
-        step3Title.textContent = "步驟三：本地配置示範（ComfyUI 架構與 Agent 對齊）";
-        step3Tag.textContent = "本地示範模式";
+      if (isColab) {
+        step3Title.textContent = "步驟三：Google Colab (Gemini Pro Agent) 任務包導出與執行";
+        step3Tag.textContent = "Colab Agent 模式";
         step3Tag.className = "badge ok";
-      } else {
+        step3Tag.style.borderColor = "#38bdf8";
+        step3Tag.style.color = "#7dd3fc";
+      } else if (isCloud) {
         step3Title.textContent = "步驟三：雲端並行渲染與片段生成";
-        step3Tag.textContent = "雲端渲染模式";
+        step3Tag.textContent = "雲端 API 模式";
         step3Tag.className = "badge warn";
+        step3Tag.style.borderColor = "";
+        step3Tag.style.color = "";
+      } else {
+        step3Title.textContent = "步驟三：本地 ComfyUI 管線示範與對齊";
+        step3Tag.textContent = "本機示範模式";
+        step3Tag.className = "badge ok";
+        step3Tag.style.borderColor = "#f59e0b";
+        step3Tag.style.color = "#fcd34d";
       }
+    }
+
+    function copyColabPrompt() {
+      const textarea = document.getElementById("colabPromptTextarea");
+      if (!textarea) return;
+      const textToCopy = textarea.value;
+
+      function onCopySuccess() {
+        const btn = document.getElementById("copyColabPromptBtn");
+        if (!btn) return;
+        const originalText = btn.textContent;
+        btn.textContent = "✅ 已複製 Colab 指令！";
+        btn.style.borderColor = "#10b981";
+        btn.style.color = "#a7f3d0";
+        setTimeout(() => {
+          btn.textContent = originalText;
+          btn.style.borderColor = "#38bdf8";
+          btn.style.color = "#7dd3fc";
+        }, 2500);
+      }
+
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(textToCopy).then(onCopySuccess).catch(() => {
+          fallbackCopyText(textarea, onCopySuccess);
+        });
+      } else {
+        fallbackCopyText(textarea, onCopySuccess);
+      }
+    }
+
+    function exportColabManifest() {
+      const plan = currentPlan || SHISA_DEFAULT_CONFIG.plan;
+      const manifest = {
+        project: plan.project_slug || "film_chain_story",
+        total_seconds: plan.recommended_total_seconds || 15,
+        skill: "minimax-h3-colab",
+        gpu: "A100",
+        jobs: (plan.segments || []).map((seg, idx) => ({
+          id: `${plan.project_slug || "story"}_part${idx + 1}`,
+          title: seg.title || `Part ${idx + 1}`,
+          duration_seconds: 5.0,
+          end_panel: seg.end_panel,
+          prompt: seg.prompt,
+          seed: 20260931 + idx
+        }))
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(manifest, null, 2));
+      const a = document.createElement("a");
+      a.href = dataStr;
+      a.download = `colab_manifest_${plan.project_slug || "story"}.json`;
+      a.click();
     }
 
     function copyAgentPrompt() {
@@ -1127,8 +1280,8 @@
         btn.style.color = "#a7f3d0";
         setTimeout(() => {
           btn.textContent = originalText;
-          btn.style.borderColor = "#38bdf8";
-          btn.style.color = "#7dd3fc";
+          btn.style.borderColor = "#f59e0b";
+          btn.style.color = "#fcd34d";
         }, 2500);
       }
 
@@ -2256,7 +2409,7 @@ Return ONLY valid JSON matching this schema:
       const p = getPrefs();
       document.getElementById("promptProviderSelect").value = p.promptProvider;
       document.getElementById("imageProviderSelect").value = p.imageProvider;
-      selectRoute("cloud");
+      selectRoute("colab");
       checkComfyConnection();
       loadShisaDemo();
 
