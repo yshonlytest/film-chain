@@ -104,6 +104,157 @@ export default {
         }
       }
 
+      // 1.25 GET / POST /api/session/:id/manifest - 分鏡任務清單同步
+      if (action === "manifest") {
+        if (request.method === "POST" || request.method === "PUT") {
+          try {
+            const manifestData = await request.json();
+            if (kv) {
+              await kv.put(`session:${sessionId}:manifest`, JSON.stringify(manifestData), { expirationTtl: 86400 });
+            }
+            return new Response(JSON.stringify({ ok: true, session_id: sessionId }), {
+              status: 200,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          } catch (err) {
+            return new Response(JSON.stringify({ error: `Manifest 儲存失敗: ${err.message}` }), {
+              status: 400,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          }
+        }
+        if (request.method === "GET") {
+          let manifest = null;
+          if (kv) {
+            const raw = await kv.get(`session:${sessionId}:manifest`);
+            if (raw) {
+              try { manifest = JSON.parse(raw); } catch (e) {}
+            }
+          }
+          if (!manifest) {
+            return new Response(JSON.stringify({ error: "尚未上傳該 Session 的分鏡清單 (Manifest not found)" }), {
+              status: 404,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          }
+          return new Response(JSON.stringify(manifest), {
+            status: 200,
+            headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+          });
+        }
+      }
+
+      // 1.26 GET / POST / PUT /api/session/:id/image - 九宮格參考原圖二進位存取
+      if (action === "image") {
+        if (request.method === "POST" || request.method === "PUT") {
+          try {
+            const contentType = request.headers.get("content-type") || "image/jpeg";
+            let imgBuffer;
+            if (contentType.includes("multipart/form-data")) {
+              const formData = await request.formData();
+              const file = formData.get("file") || formData.get("image");
+              if (!file || typeof file.arrayBuffer !== "function") {
+                throw new Error("表單中未包含名為 file 或 image 的圖檔資料");
+              }
+              imgBuffer = await file.arrayBuffer();
+            } else {
+              imgBuffer = await request.arrayBuffer();
+            }
+
+            if (!imgBuffer || imgBuffer.byteLength === 0) {
+              throw new Error("上傳的圖檔為空");
+            }
+
+            if (kv) {
+              await kv.put(`session:${sessionId}:image`, imgBuffer, { expirationTtl: 86400 });
+            }
+
+            return new Response(JSON.stringify({
+              ok: true,
+              image_url: `/api/session/${sessionId}/image`,
+              size_bytes: imgBuffer.byteLength,
+            }), {
+              status: 200,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          } catch (err) {
+            return new Response(JSON.stringify({ error: `圖片儲存失敗: ${err.message}` }), {
+              status: 400,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          }
+        }
+        if (request.method === "GET") {
+          let imgBuffer = null;
+          if (kv) {
+            imgBuffer = await kv.get(`session:${sessionId}:image`, { type: "arrayBuffer" });
+          }
+          if (!imgBuffer) {
+            return new Response(JSON.stringify({ error: "九宮格參考圖尚未上傳或已過期" }), {
+              status: 404,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          }
+          return new Response(imgBuffer, {
+            status: 200,
+            headers: corsHeaders({
+              "Content-Type": "image/jpeg",
+              "Content-Length": String(imgBuffer.byteLength),
+              "Cache-Control": "public, max-age=3600",
+            }),
+          });
+        }
+      }
+
+      // 1.27 POST / GET /api/session/:id/cancel - 任務中止控制信號
+      if (action === "cancel") {
+        if (request.method === "POST") {
+          try {
+            const body = await request.json().catch(() => ({}));
+            const cancelData = {
+              cancelled: true,
+              reason: body.reason || "使用者手動中止生成",
+              timestamp: Date.now(),
+            };
+            if (kv) {
+              await kv.put(`session:${sessionId}:cancel`, JSON.stringify(cancelData), { expirationTtl: 86400 });
+              // 同步更新 status
+              const raw = await kv.get(`session:${sessionId}:status`);
+              let s = { session_id: sessionId };
+              if (raw) {
+                try { s = JSON.parse(raw); } catch (e) {}
+              }
+              s.status = "cancelling";
+              s.log = `[已發送中止信號] ${cancelData.reason}`;
+              s.updated_at = Date.now();
+              await kv.put(`session:${sessionId}:status`, JSON.stringify(s), { expirationTtl: 86400 });
+            }
+            return new Response(JSON.stringify({ ok: true, cancelled: true }), {
+              status: 200,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          } catch (err) {
+            return new Response(JSON.stringify({ error: err.message }), {
+              status: 400,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          }
+        }
+        if (request.method === "GET") {
+          let cancelData = { cancelled: false };
+          if (kv) {
+            const raw = await kv.get(`session:${sessionId}:cancel`);
+            if (raw) {
+              try { cancelData = JSON.parse(raw); } catch (e) {}
+            }
+          }
+          return new Response(JSON.stringify(cancelData), {
+            status: 200,
+            headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+          });
+        }
+      }
+
       // 1.3 GET /api/session/:id/events - SSE 即時推播串流
       if (request.method === "GET" && action === "events") {
         const { readable, writable } = new TransformStream();

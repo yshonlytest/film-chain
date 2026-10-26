@@ -779,9 +779,14 @@
             <span><strong style="color:#38bdf8;">【Gemini Advanced / Pro 用戶限定】跨平台 AI Agent 雲端算力流</strong></span>
             <span class="badge ok" style="font-size:0.68rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.2);">Claude Code · Codex · Antigravity 通用</span>
           </div>
-          <button type="button" id="copyColabPromptBtn" class="btn" onclick="copyColabPrompt()" style="padding:6px 16px; font-size:0.82rem; background:rgba(56,189,248,0.22); border-color:#38bdf8; color:#7dd3fc; font-weight:700;">
-            📋 複製 Agent 自動執行指令
-          </button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" id="openColabTopBtn" class="btn primary" onclick="openColabNotebook()" style="padding:6px 16px; font-size:0.82rem; background:linear-gradient(135deg, #0284c7, #0369a1); border-color:#38bdf8; color:#fff; font-weight:700; box-shadow:0 3px 12px rgba(2,132,199,0.3);">
+              🚀 在 Google Colab 開啟執行 (免本機環境)
+            </button>
+            <button type="button" id="copyColabPromptBtn" class="btn" onclick="copyColabPrompt()" style="padding:6px 14px; font-size:0.82rem; background:rgba(56,189,248,0.22); border-color:#38bdf8; color:#7dd3fc; font-weight:700;">
+              📋 複製終端 Agent 執行指令
+            </button>
+          </div>
         </div>
         <div style="font-size:0.78rem; color:#94a3b8; line-height:1.5; margin-bottom:8px;">
           💡 <strong>方案限制與授權說明：</strong>本工作流利用 Google 訂閱贈送之每月 Compute Units 啟動雲端 A100 GPU；首次使用需在本機終端執行 <code>colab login</code> 完成 Google OAuth 授權（若尚未安裝 CLI，指令會自動引導安裝）。零本機顯卡負擔！
@@ -979,24 +984,38 @@
         <!-- Dynamic Pipeline Timeline Tracker (自動隨段落數增減及響應式適配) -->
         <div id="colabPipelineTracker" class="pipeline-tracker-container"></div>
 
+        <!-- 逾時與心跳監控告警 (超過預期無回應時自動顯示) -->
+        <div id="heartbeatWarningBanner" style="display:none; background:rgba(239,68,68,0.12); border:1.5px solid #ef4444; border-radius:10px; padding:12px 16px; margin-bottom:14px; color:#fca5a5; font-size:0.84rem; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:1.2rem;">⚠️</span>
+            <span><strong>長時間未收到進度：</strong>當前段落運算已超過 5 分鐘無回報，可能雲端佇列繁忙或連線中斷。</span>
+          </div>
+          <button type="button" class="btn" onclick="cancelCurrentSessionGracefully()" style="padding:6px 14px; font-size:0.8rem; background:#dc2626; color:#fff; border:none; border-radius:6px; font-weight:700; cursor:pointer;">
+            ⏹️ 中止並縫合已完成部分
+          </button>
+        </div>
+
         <!-- Action Control Hub -->
         <div style="background:#091222; border:1px solid #1e3a5f; border-radius:12px; padding:16px; margin-bottom:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <div>
-              <h4 style="color:#e0f2fe; font-size:0.92rem; margin-bottom:4px;">🎮 本機專案控制模板指令</h4>
+              <h4 style="color:#e0f2fe; font-size:0.92rem; margin-bottom:4px;">🎮 雙軌執行控制中樞</h4>
               <p style="font-size:0.78rem; color:#94a3b8;">
-                在終端機啟動任何 AI Agent（Claude Code、Codex、Antigravity、OpenCode），直接複製以下指令即可全自動執行：
+                免本機顯卡！可直接點擊「一鍵 Colab 開啟」於瀏覽器全自動運算，或複製指令交由終端 AI Agent 執行：
               </p>
             </div>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <button type="button" class="primary" onclick="exportColabManifest()" style="padding:9px 18px; font-size:0.88rem; background:#0284c7; border-color:#38bdf8;">
-                📥 導出任務包 (jobs.json)
+              <button type="button" id="openColabActionBtn" class="primary" onclick="openColabNotebook()" style="padding:9px 18px; font-size:0.88rem; background:linear-gradient(135deg, #0284c7, #0369a1); border-color:#38bdf8; font-weight:700; box-shadow:0 3px 12px rgba(2,132,199,0.35);">
+                🚀 在 Google Colab 開啟執行
               </button>
               <button type="button" id="copyColabPromptBtn" class="btn" onclick="copyColabPrompt()" style="padding:9px 18px; font-size:0.88rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.15);">
-                📋 一鍵複製 Agent 啟動指令
+                📋 複製 Agent 終端指令
               </button>
               <button type="button" class="btn" onclick="openShareModal()" style="padding:9px 16px; font-size:0.88rem; border-color:#a855f7; color:#d8b4fe; background:rgba(168,85,247,0.15);">
                 📱 手機同步監看 (QR Code)
+              </button>
+              <button type="button" class="btn" onclick="cancelCurrentSessionGracefully()" style="padding:9px 14px; font-size:0.84rem; border-color:#ef4444; color:#fca5a5; background:rgba(239,68,68,0.12);">
+                ⏹️ 中止生成
               </button>
             </div>
           </div>
@@ -1011,17 +1030,18 @@
         </div>
       </div>
 
-      <!-- Mode 2: Cloud API Panel (Seedance / fal.ai) -->
+      <!-- Mode 2: Cloud API Panel (MiniMax / Seedance / fal.ai) -->
       <div id="panelCloudView" style="display:none;">
         <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #cbd5e1;">
           <strong>☁️ 雲端並行渲染說明：</strong><br>
-          免開本機顯卡運算，系統將各分段首尾關鍵影格同時發送至雲端 GPU 集群進行並行渲染，預計 1~2 分鐘內完成全部分鏡片段。
+          免開本機顯卡運算，系統將各分段首尾關鍵影格同時發送至雲端 GPU 集群進行渲染，預計 1~2 分鐘內完成全部分鏡片段。
         </div>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:16px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px;">
           <div>
             <label>🌐 雲端服務商 / 模型</label>
-            <select id="cloudProviderSelect">
+            <select id="cloudProviderSelect" onchange="onCloudProviderChange(this.value)">
+              <option value="cloud-minimax" selected>MiniMax 官方 (Hailuo Video-01 視訊模型)</option>
               <option value="cloud-seedance">火山方舟 Ark (Doubao Seedance 1.0 Pro 首尾幀)</option>
               <option value="cloud-fal">fal.ai 額度平台 (Seedance / Kling / Wan)</option>
               <option value="cloud-openapi">第三方兼職轉接站 (/v1/video 相容)</option>
@@ -1036,8 +1056,13 @@
           </div>
         </div>
 
+        <div style="margin-bottom:16px;">
+          <label for="cloudDirectApiKey">🔑 雲端服務 API Key（僅暫存於本機瀏覽器，安全不外洩）</label>
+          <input type="password" id="cloudDirectApiKey" placeholder="填入 API Key (例如 sk-...)，亦可在右上角齒輪設定中填寫" style="width:100%; background:#060a12; border:1px solid #1e3a5f; border-radius:6px; padding:9px 12px; color:#cbd5e1; font-size:0.86rem;" onchange="saveCloudDirectKey(this.value)" />
+        </div>
+
         <button type="button" id="startCloudVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeCloudVideoStep()">
-          🚀 啟動雲端並行渲染（預計 1~2 分鐘完成）
+          🚀 啟動雲端渲染（全自動呼吸卡片回報與縫合）
         </button>
       </div>
 
@@ -1433,8 +1458,158 @@
         alert("已複製跨裝置監看網址！");
       }).catch(() => {
         document.execCommand("copy");
-        alert("已複製跨裝置監看網址！");
+        showToast("已複製跨裝置監看網址！");
       });
+    }
+
+    function showToast(message, duration = 3800) {
+      let toast = document.getElementById("filmChainToast");
+      if (!toast) {
+        toast = document.createElement("div");
+        toast.id = "filmChainToast";
+        toast.style.position = "fixed";
+        toast.style.top = "24px";
+        toast.style.left = "50%";
+        toast.style.transform = "translateX(-50%) translateY(-20px)";
+        toast.style.background = "linear-gradient(135deg, #1e293b, #0f172a)";
+        toast.style.border = "1.5px solid #38bdf8";
+        toast.style.boxShadow = "0 10px 25px rgba(0,0,0,0.5), 0 0 16px rgba(56,189,248,0.35)";
+        toast.style.color = "#f8fafc";
+        toast.style.padding = "10px 22px";
+        toast.style.borderRadius = "30px";
+        toast.style.fontSize = "0.88rem";
+        toast.style.fontWeight = "600";
+        toast.style.zIndex = "99999";
+        toast.style.opacity = "0";
+        toast.style.transition = "all 0.28s cubic-bezier(0.16, 1, 0.3, 1)";
+        toast.style.pointerEvents = "none";
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.style.opacity = "1";
+      toast.style.transform = "translateX(-50%) translateY(0)";
+      clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transform = "translateX(-50%) translateY(-15px)";
+      }, duration);
+    }
+
+    async function publishSessionManifestAndImage() {
+      const sid = getOrCreateSessionId();
+      const segs = syncSegmentsFromDOM();
+      const effectiveSegs = segs.length > 0 ? segs : (currentPlan?.segments || []);
+      const count = effectiveSegs.length || 1;
+      const totalSec = count * 5;
+      const slug = currentPlan?.project_slug || "okinawa_shisa";
+
+      const manifest = {
+        project: slug,
+        total_seconds: totalSec,
+        jobs: effectiveSegs.map((s, idx) => ({
+          id: `part${idx + 1}`,
+          title: s.title || `Part ${idx + 1}`,
+          end_panel: s.end_panel || 9,
+          prompt: s.prompt || "",
+          duration_seconds: 5.0,
+          seed: 20260931 + idx
+        }))
+      };
+
+      try {
+        await fetch(`/api/session/${sid}/manifest`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(manifest)
+        });
+
+        const refPreview = document.getElementById("refPreview");
+        if (refPreview && refPreview.src && refPreview.src.startsWith("data:image")) {
+          const res = await fetch(refPreview.src);
+          const blob = await res.blob();
+          await fetch(`/api/session/${sid}/image`, {
+            method: "POST",
+            headers: { "Content-Type": blob.type || "image/jpeg" },
+            body: blob
+          });
+        }
+      } catch (err) {
+        console.warn("Notice: Manifest/Image auto-publish skipped:", err);
+      }
+    }
+
+    async function openColabNotebook() {
+      const sid = getOrCreateSessionId();
+      const topBtn = document.getElementById("openColabTopBtn");
+      const actionBtn = document.getElementById("openColabActionBtn");
+      if (topBtn) { topBtn.disabled = true; topBtn.textContent = "⏳ 正在同步任務至雲端..."; }
+      if (actionBtn) { actionBtn.disabled = true; actionBtn.textContent = "⏳ 正在同步任務至雲端..."; }
+
+      await publishSessionManifestAndImage();
+
+      if (topBtn) { topBtn.disabled = false; topBtn.textContent = "🚀 在 Google Colab 開啟執行 (免本機環境)"; }
+      if (actionBtn) { actionBtn.disabled = false; actionBtn.textContent = "🚀 在 Google Colab 開啟執行"; }
+
+      try {
+        await navigator.clipboard.writeText(sid);
+      } catch (e) {
+        const tmp = document.createElement("input");
+        tmp.value = sid;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand("copy");
+        document.body.removeChild(tmp);
+      }
+
+      showToast(`✅ 已複製 Session ID: ${sid}！正在開啟 Colab，請貼上並點擊全部執行。`);
+      startSessionListener(sid);
+
+      const colabUrl = `https://colab.research.google.com/github/yshonlytest/film-chain/blob/main/notebooks/film_chain_runner.ipynb`;
+      window.open(colabUrl, "_blank");
+    }
+
+    async function cancelCurrentSessionGracefully() {
+      const sid = getOrCreateSessionId();
+      if (!confirm("確定要中止後續段落生成嗎？\n\n系統將自動把前幾段已生成的影片進行無縫縫合並上傳，絕不浪費已完成的成果！")) {
+        return;
+      }
+      try {
+        await fetch(`/api/session/${sid}/cancel`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason: "使用者手動要求中止" })
+        });
+        showToast("⏹️ 已發送中止信號，正在等待完成部分無縫縫合...");
+        const banner = document.getElementById("heartbeatWarningBanner");
+        if (banner) banner.style.display = "none";
+      } catch (e) {
+        alert(`發送中止信號失敗: ${e.message}`);
+      }
+    }
+
+    function saveCloudDirectKey(val) {
+      if (!val) return;
+      const prov = document.getElementById("cloudProviderSelect")?.value || "cloud-minimax";
+      const prefs = getPrefs();
+      if (prov === "cloud-minimax") {
+        localStorage.setItem("filmchain_minimax_key", val.trim());
+      }
+      prefs.cloudVideoKey = val.trim();
+      savePrefs(prefs);
+      showToast("🔑 API Key 已安全保存在本機瀏覽器！");
+    }
+
+    function onCloudProviderChange(prov) {
+      const keyInput = document.getElementById("cloudDirectApiKey");
+      if (!keyInput) return;
+      if (prov === "cloud-minimax") {
+        keyInput.value = localStorage.getItem("filmchain_minimax_key") || "";
+        keyInput.placeholder = "請輸入 MiniMax API Key (sk-...)";
+      } else {
+        const prefs = getPrefs();
+        keyInput.value = prefs.cloudVideoKey || "";
+        keyInput.placeholder = "填入對應服務商 API Key";
+      }
     }
 
     function startSessionListener(sessionId) {
@@ -2571,6 +2746,56 @@ Return ONLY valid JSON matching this schema:
         throw new Error("請先填入雲端影片 API Key");
       }
 
+      if (provider === "cloud-minimax") {
+        const apiKey = localStorage.getItem("filmchain_minimax_key") || prefs.cloudVideoKey;
+        if (!apiKey) {
+          throw new Error("請先填入 MiniMax API Key");
+        }
+
+        const payload = {
+          model: "video-01",
+          prompt: promptText
+        };
+        if (firstFrameDataUrl) {
+          payload.first_frame_image = firstFrameDataUrl;
+        }
+
+        const createRes = await fetchWithProxy("https://api.minimax.chat/v1/video_generation", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!createRes.ok) throw new Error(`MiniMax 建立任務失敗 (${createRes.status}): ${await createRes.text()}`);
+        const createData = await createRes.json();
+        const taskId = createData.task_id;
+        if (!taskId) throw new Error(`MiniMax 回傳異常: ${JSON.stringify(createData)}`);
+
+        while (true) {
+          await new Promise(r => setTimeout(r, 4500));
+          const pollRes = await fetchWithProxy(`https://api.minimax.chat/v1/query/video_generation?task_id=${taskId}`, {
+            headers: { "Authorization": `Bearer ${apiKey}` },
+          });
+          if (!pollRes.ok) continue;
+          const pollData = await pollRes.json();
+          if (pollData.status === "Success") {
+            if (pollData.download_url) return pollData.download_url;
+            if (pollData.file_id) {
+              const fileRes = await fetchWithProxy(`https://api.minimax.chat/v1/files/retrieve?file_id=${pollData.file_id}`, {
+                headers: { "Authorization": `Bearer ${apiKey}` },
+              });
+              const fileData = await fileRes.json();
+              return fileData.file?.download_url || fileData.download_url;
+            }
+          }
+          if (pollData.status === "Fail") {
+            throw new Error(`MiniMax 任務失敗: ${pollData.base_resp?.status_msg || "未知錯誤"}`);
+          }
+        }
+      }
+
       if (provider === "cloud-seedance") {
         const contentArr = [
           { type: "text", text: `${promptText} --duration 5` }
@@ -2674,18 +2899,36 @@ Return ONLY valid JSON matching this schema:
       const startBtn = document.getElementById("startCloudVideoBtn");
       startBtn.disabled = true;
 
+      const sid = getOrCreateSessionId();
+      startSessionListener(sid);
+
       document.getElementById("jobProgressPanel").style.display = "block";
       document.getElementById("jobProgressBar").style.width = "10%";
-      document.getElementById("jobStageText").textContent = `☁️ 正在調用雲端 API (${prefs.cloudVideoModel}) 並行生成 ${segs.length} 段影片...`;
+      document.getElementById("jobStageText").textContent = `☁️ 正在調用雲端 API 並行生成 ${segs.length} 段影片...`;
 
       try {
         const clipUrls = [];
         if (chainMode === "panel-anchor") {
-          const tasks = segs.map((seg, idx) => {
+          const tasks = segs.map(async (seg, idx) => {
             const startPanelIdx = idx === 0 ? 1 : (segs[idx - 1].end_panel || 3);
             const endPanelIdx = seg.end_panel || Math.min(9, (idx + 1) * 3);
             const firstFrame = slicedPanelsDataUrls[startPanelIdx] || gridImageDataUrl;
             const lastFrame = slicedPanelsDataUrls[endPanelIdx] || "";
+
+            fetch(`/api/session/${sid}/status`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                stage: `stage${idx + 1}`,
+                step_index: idx + 1,
+                total_steps: segs.length + 1,
+                percent: Math.round(((idx + 1) / (segs.length + 1)) * 70),
+                title: segs[idx].title,
+                log: `正在雲端運算 ${segs[idx].title}...`,
+                status: "running"
+              })
+            }).catch(() => {});
+
             return callCloudVideoSegment(provider, prefs, seg.prompt, firstFrame, lastFrame);
           });
           const results = await Promise.all(tasks);
@@ -2694,6 +2937,20 @@ Return ONLY valid JSON matching this schema:
           let prevLastFrame = slicedPanelsDataUrls[1] || gridImageDataUrl;
           for (let i = 0; i < segs.length; i++) {
             document.getElementById("jobStageText").textContent = `☁️ 正在雲端生成第 ${i + 1}/${segs.length} 段...`;
+            fetch(`/api/session/${sid}/status`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                stage: `stage${i + 1}`,
+                step_index: i + 1,
+                total_steps: segs.length + 1,
+                percent: Math.round(((i + 0.5) / (segs.length + 1)) * 80),
+                title: segs[i].title,
+                log: `正在雲端運算 ${segs[i].title}...`,
+                status: "running"
+              })
+            }).catch(() => {});
+
             const targetLast = slicedPanelsDataUrls[segs[i].end_panel || 9] || "";
             const url = await callCloudVideoSegment(provider, prefs, segs[i].prompt, prevLastFrame, targetLast);
             clipUrls.push(url);
@@ -2705,10 +2962,39 @@ Return ONLY valid JSON matching this schema:
         document.getElementById("jobStageText").textContent = `✅ 雲端 ${clipUrls.length} 段影片全部生成完畢！`;
         document.getElementById("jobPercentText").textContent = "100%";
 
+        fetch(`/api/session/${sid}/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stage: "complete",
+            step_index: segs.length + 1,
+            total_steps: segs.length + 1,
+            percent: 100,
+            title: "雲端生成就緒",
+            log: "全部分鏡已成功自雲端模型生成！",
+            status: "completed",
+            video_ready: true,
+            video_url: clipUrls[0]
+          })
+        }).catch(() => {});
+
         renderSegmentsPlaylist(segs.map((s, i) => ({ title: s.title, url: clipUrls[i] })));
         playVideoInStage(clipUrls[0], `☁️ ${segs[0].title}`);
+        playCompletionChime();
         document.getElementById("step4Card").scrollIntoView({ behavior: "smooth" });
       } catch (err) {
+        fetch(`/api/session/${sid}/status`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            stage: "stage1",
+            status: "error",
+            error_message: err.message,
+            percent: 0,
+            log: `雲端生成失敗: ${err.message}`
+          })
+        }).catch(() => {});
+
         if (typeof H3CloudDiagnostics !== "undefined") {
           const diag = H3CloudDiagnostics.diagnoseNetworkError(err, { url: prefs.cloudVideoBaseUrl, service: provider });
           alert(`❌ ${diag.title}\n\n原因：${diag.reason}\n\n👉 建議作法：${diag.action}`);

@@ -637,6 +637,45 @@ class SessionRelayReporter:
             print(f"[SessionRelay] Notice: video upload failed: {exc}", file=sys.stderr)
             return None
 
+    def fetch_manifest(self) -> dict[str, Any] | None:
+        if not self.enabled:
+            return None
+        url = f"{self.relay_url}/api/session/{self.session_id}/manifest"
+        try:
+            req = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except Exception as exc:
+            print(f"[SessionRelay] Notice: fetch manifest failed: {exc}", file=sys.stderr)
+            return None
+
+    def download_image(self, dest_path: Path) -> Path | None:
+        if not self.enabled:
+            return None
+        url = f"{self.relay_url}/api/session/{self.session_id}/image"
+        try:
+            req = urllib.request.Request(url, method="GET")
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                dest_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(dest_path, "wb") as f:
+                    f.write(resp.read())
+                return dest_path
+        except Exception as exc:
+            print(f"[SessionRelay] Notice: download reference image failed: {exc}", file=sys.stderr)
+            return None
+
+    def check_cancellation(self) -> bool:
+        if not self.enabled:
+            return False
+        url = f"{self.relay_url}/api/session/{self.session_id}/cancel"
+        try:
+            req = urllib.request.Request(url, headers={"Accept": "application/json"}, method="GET")
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return bool(data.get("cancelled"))
+        except Exception:
+            return False
+
 
 def concat_chain_videos(part_paths: list[Path], final_output: Path, work_dir: Path) -> Path:
     if not part_paths:
@@ -682,7 +721,7 @@ def concat_chain_videos(part_paths: list[Path], final_output: Path, work_dir: Pa
 
 
 def run_chain(
-    manifest_path: Path,
+    manifest_path: Path | None = None,
     *,
     session_id: str | None = None,
     relay_url: str | None = "https://film-chain.onlytest.dev",
@@ -693,17 +732,35 @@ def run_chain(
     exec_timeout: float = 3600.0,
 ) -> dict[str, Any]:
     reporter = SessionRelayReporter(relay_url, session_id)
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    work_dir = output_dir / f".chain_work_{uuid.uuid4().hex[:8]}"
+    work_dir.mkdir(parents=True, exist_ok=True)
+
+    cloud_ref_img: Path | None = None
+    manifest: dict[str, Any] = {}
+    if manifest_path and manifest_path.is_file():
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    elif reporter.enabled:
+        reporter.report(
+            "stage0",
+            step_index=0,
+            total_steps=1,
+            percent=3,
+            title="連接雲端任務",
+            log=f"正在從中繼站同步 Session {session_id} 的分鏡設定...",
+        )
+        cloud_manifest = reporter.fetch_manifest()
+        if cloud_manifest:
+            manifest = cloud_manifest
+            cloud_ref_img = reporter.download_image(work_dir / "cloud_reference_grid.jpg")
+
     raw_jobs = manifest.get("jobs", [])
     if not raw_jobs:
-        raise ValueError("Manifest contains no jobs.")
+        raise ValueError("Manifest contains no jobs. 請確認 manifest_path 正確或雲端 Session 已發布分鏡任務。")
 
     total_jobs = len(raw_jobs)
     slug = manifest.get("project", "story")
     total_seconds = manifest.get("total_seconds", total_jobs * 5)
-    output_dir.mkdir(parents=True, exist_ok=True)
-    work_dir = output_dir / f".chain_work_{uuid.uuid4().hex[:8]}"
-    work_dir.mkdir(parents=True, exist_ok=True)
 
     reporter.report(
         "stage0",
@@ -751,6 +808,53 @@ def run_chain(
             part_num = idx + 1
             part_title = job.get("title") or f"Part {part_num}"
             pct = 10 + int((idx / (total_jobs + 1)) * 80)
+
+            part_output = output_dir / f"{job.get('id', f'part{part_num}')}.mp4"
+
+            # Checkpoint resume: Skip already rendered part
+            if part_output.is_file() and part_output.stat().st_size > 1024:
+                reporter.report(
+                    f"stage{part_num}",
+                    step_index=part_num,
+                    total_steps=total_jobs + 1,
+                    percent=pct,
+                    title=part_title,
+                    log=f"{part_title} 發現本地檢查點已存在，跳過重複運算直接重用！",
+                )
+                part_outputs.append(part_output)
+                if part_num < total_jobs:
+                    last_frame_png = work_dir / f"last_frame_part{part_num}.png"
+                    cmd_frame = [
+                        "ffmpeg", "-y", "-sseof", "-0.1", "-i", str(part_output),
+                        "-update", "1", "-q:v", "2", str(last_frame_png)
+                    ]
+                    subprocess.run(cmd_frame, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                continue
+
+            # Check if user requested cancellation before starting new inference
+            if reporter.check_cancellation():
+                partial_output = None
+                if part_outputs:
+                    partial_output = output_dir / f"{slug}_partial_{len(part_outputs)*5}s_merged.mp4"
+                    concat_chain_videos(part_outputs, partial_output, work_dir)
+                    reporter.upload_video(partial_output)
+                reporter.report(
+                    "cancelled",
+                    step_index=part_num,
+                    total_steps=total_jobs + 1,
+                    percent=pct,
+                    title="任務已手動中止",
+                    status="completed" if part_outputs else "aborted",
+                    log=f"已依指示提前中止。{'已將前 ' + str(len(part_outputs)) + ' 段影片無縫縫合上傳至雲端！' if part_outputs else '尚未產生影片。'}",
+                    video_ready=bool(part_outputs),
+                )
+                return {
+                    "status": "cancelled",
+                    "session": session,
+                    "completed_parts": len(part_outputs),
+                    "final_output": str(partial_output) if partial_output else None,
+                }
+
             reporter.report(
                 f"stage{part_num}",
                 step_index=part_num,
@@ -764,14 +868,17 @@ def run_chain(
             ref_imgs = job.get("reference_images") or []
             if not ref_imgs:
                 if idx == 0:
-                    for demo_candidate in [
-                        Path("assets/demo/okinawa_shisa_ref.jpg"),
-                        Path("public/assets/demo/okinawa_shisa_ref.jpg"),
-                        manifest_path.parent / "okinawa_shisa_ref.jpg",
-                    ]:
-                        if demo_candidate.is_file():
-                            ref_imgs = [str(demo_candidate.resolve())]
-                            break
+                    if cloud_ref_img and cloud_ref_img.is_file():
+                        ref_imgs = [str(cloud_ref_img.resolve())]
+                    else:
+                        for demo_candidate in [
+                            Path("assets/demo/okinawa_shisa_ref.jpg"),
+                            Path("public/assets/demo/okinawa_shisa_ref.jpg"),
+                            manifest_path.parent / "okinawa_shisa_ref.jpg" if manifest_path else None,
+                        ]:
+                            if demo_candidate and demo_candidate.is_file():
+                                ref_imgs = [str(demo_candidate.resolve())]
+                                break
                 else:
                     if last_frame_png and last_frame_png.is_file():
                         ref_imgs = [str(last_frame_png.resolve())]
@@ -780,7 +887,6 @@ def run_chain(
             if ref_imgs and "<Picture" not in prompt_str:
                 prompt_str = f"In <Picture 1>, {prompt_str}"
 
-            part_output = output_dir / f"{job.get('id', f'part{part_num}')}.mp4"
             job_spec = {
                 "id": job.get("id", f"part{part_num}"),
                 "title": part_title,
@@ -908,7 +1014,7 @@ def main() -> int:
     batch_parser.add_argument("--timeout", type=float, default=float(os.environ.get("COLAB_EXEC_TIMEOUT", "3600")))
 
     chain_parser = sub.add_parser("chain", help="Render chained multi-segment video with last-frame continuity and auto-stitching")
-    chain_parser.add_argument("--manifest", type=Path, required=True)
+    chain_parser.add_argument("--manifest", type=Path, default=None, help="Local manifest path (omit to auto-fetch from cloud relay via --session-id)")
     chain_parser.add_argument("--session-id", default=os.environ.get("FILM_CHAIN_SESSION_ID"))
     chain_parser.add_argument("--relay-url", default=os.environ.get("FILM_CHAIN_RELAY_URL", "https://film-chain.onlytest.dev"))
     chain_parser.add_argument("--session", help="Reuse an existing Colab session instead of creating one")
@@ -994,8 +1100,9 @@ def main() -> int:
             print(json.dumps(progress, ensure_ascii=False))
             return 0 if progress["status"] == "completed" else 1
         if args.command == "chain":
+            manifest_arg = args.manifest.expanduser().resolve() if args.manifest else None
             result = run_chain(
-                args.manifest.expanduser().resolve(),
+                manifest_arg,
                 session_id=args.session_id,
                 relay_url=args.relay_url,
                 session=args.session,

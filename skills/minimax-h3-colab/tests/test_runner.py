@@ -318,6 +318,75 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(merged_path.name, "test_chain_10s_seamless_merged.mp4")
         self.assertEqual(len(result["parts"]), 2)
 
+    def test_session_relay_cloud_fetch_and_cancellation(self) -> None:
+        class FakeResponse:
+            def __init__(self, data: bytes):
+                self._data = data
+            def __enter__(self):
+                return self
+            def __exit__(self, *args):
+                pass
+            def read(self):
+                return self._data
+
+        reporter = runner.SessionRelayReporter("https://film-chain.onlytest.dev", "session_xyz")
+        manifest_payload = json.dumps({"project": "cloud_p", "jobs": [{"id": "p1", "prompt": "test"}]}).encode("utf-8")
+
+        with patch("urllib.request.urlopen") as mock_open:
+            # 1. Test fetch_manifest
+            mock_open.return_value = FakeResponse(manifest_payload)
+            mf = reporter.fetch_manifest()
+            self.assertEqual(mf["project"], "cloud_p")
+
+            # 2. Test download_image
+            mock_open.return_value = FakeResponse(b"fake jpeg image data")
+            target_img = self.root / "cloud_img.jpg"
+            downloaded = reporter.download_image(target_img)
+            self.assertTrue(downloaded.is_file())
+            self.assertEqual(downloaded.read_bytes(), b"fake jpeg image data")
+
+            # 3. Test check_cancellation
+            mock_open.return_value = FakeResponse(json.dumps({"cancelled": True}).encode("utf-8"))
+            is_cancelled = reporter.check_cancellation()
+            self.assertTrue(is_cancelled)
+
+    def test_run_chain_cancellation_gracefully_merges_partial(self) -> None:
+        manifest_data = {
+            "project": "test_cancel",
+            "total_seconds": 10,
+            "jobs": [
+                {"id": "part1", "title": "Part 1", "prompt": "p1", "duration_seconds": 5, "reference_images": [str(self.root / "ref.png")]},
+                {"id": "part2", "title": "Part 2", "prompt": "p2", "duration_seconds": 5}
+            ]
+        }
+        ref_img = self.root / "ref.png"
+        ref_img.write_bytes(b"fake ref")
+        manifest_path = self.root / "cancel_manifest.json"
+        manifest_path.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+        output_dir = self.root / "cancel_output"
+
+        # Pre-create part1 to simulate part 1 finished, then cancel signal on part 2
+        output_dir.mkdir(parents=True, exist_ok=True)
+        part1_file = output_dir / "part1.mp4"
+        part1_file.write_bytes(b"x" * 2000)
+
+        with patch.object(runner.SessionRelayReporter, "check_cancellation", return_value=True):
+            result = runner.run_chain(
+                manifest_path,
+                session_id="test_cancel_session",
+                relay_url="https://film-chain.onlytest.dev",
+                session=None,
+                gpu="A100",
+                high_mem=False,
+                output_dir=output_dir,
+                exec_timeout=60,
+            )
+
+        self.assertEqual(result["status"], "cancelled")
+        self.assertEqual(result["completed_parts"], 1)
+        self.assertTrue(Path(result["final_output"]).is_file())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -112,4 +112,67 @@ test("Cloudflare Worker - Session Relay API Tests", async (t) => {
     assert.equal(chunkArr[0], 10);
     assert.equal(chunkArr[9], 19);
   });
+
+  await t.test("should store and retrieve storyboard manifest", async () => {
+    const testManifest = {
+      project_name: "Test Film",
+      segments: [
+        { index: 1, title: "Part 1", prompt: "A robot opens eyes", end_panel: 3 },
+        { index: 2, title: "Part 2", prompt: "A robot stands up", end_panel: 6 }
+      ]
+    };
+    const postReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/manifest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(testManifest)
+    });
+    const postRes = await worker.fetch(postReq, env);
+    assert.equal(postRes.status, 200);
+
+    const getReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/manifest");
+    const getRes = await worker.fetch(getReq, env);
+    assert.equal(getRes.status, 200);
+    const data = await getRes.json();
+    assert.equal(data.project_name, "Test Film");
+    assert.equal(data.segments.length, 2);
+  });
+
+  await t.test("should upload and retrieve reference image binary", async () => {
+    const fakeImgData = new Uint8Array([255, 216, 255, 224, 0, 16, 74, 70, 73, 70]); // JPEG magic header
+    const postReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/image", {
+      method: "POST",
+      headers: { "Content-Type": "image/jpeg" },
+      body: fakeImgData.buffer
+    });
+    const postRes = await worker.fetch(postReq, env);
+    assert.equal(postRes.status, 200);
+    const postData = await postRes.json();
+    assert.equal(postData.ok, true);
+
+    const getReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/image");
+    const getRes = await worker.fetch(getReq, env);
+    assert.equal(getRes.status, 200);
+    assert.equal(getRes.headers.get("Content-Type"), "image/jpeg");
+    const imgBuf = await getRes.arrayBuffer();
+    assert.equal(imgBuf.byteLength, 10);
+  });
+
+  await t.test("should handle cancel signal and report cancellation", async () => {
+    const postReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/cancel", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: "使用者要求中止" })
+    });
+    const postRes = await worker.fetch(postReq, env);
+    assert.equal(postRes.status, 200);
+    const postData = await postRes.json();
+    assert.equal(postData.cancelled, true);
+
+    const getReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/cancel");
+    const getRes = await worker.fetch(getReq, env);
+    assert.equal(getRes.status, 200);
+    const data = await getRes.json();
+    assert.equal(data.cancelled, true);
+    assert.equal(data.reason, "使用者要求中止");
+  });
 });
