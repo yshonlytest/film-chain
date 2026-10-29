@@ -1070,40 +1070,77 @@
         </div>
       </div>
 
-      <!-- Mode 2: Cloud API Panel (MiniMax / Seedance / fal.ai) -->
+      <!-- Mode 2: Cloud API Panel (fal.ai / MiniMax Direct) -->
       <div id="panelCloudView" style="display:none;">
-        <div style="background: rgba(99, 102, 241, 0.1); border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; font-size: 0.84rem; color: #cbd5e1;">
-          <strong>☁️ 雲端並行渲染說明：</strong><br>
-          免開本機顯卡運算，系統將各分段首尾關鍵影格同時發送至雲端 GPU 集群進行渲染，預計 1~2 分鐘內完成全部分鏡片段。
+        <div style="background: rgba(16, 185, 129, 0.08); border: 1px solid rgba(16, 185, 129, 0.28); border-radius: 12px; padding: 14px 18px; margin-bottom: 18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div>
+              <h4 style="margin:0 0 4px 0; font-size:0.95rem; color:#6ee7b7; display:flex; align-items:center; gap:6px;">
+                <span>⚡ 商業雲端 API 極速渲染工作台</span>
+              </h4>
+              <p style="margin:0; font-size:0.8rem; color:#94a3b8; line-height:1.45;">
+                免開本機 GPU 與 Colab 算力，直接調用國際級視頻模型集群（支援 MiniMax Hailuo 2.1 / Kling 首尾幀）。
+              </p>
+            </div>
+            <div id="cloudCostBadge" class="badge ok" style="border-color:#10b981; color:#6ee7b7; background:rgba(16,185,129,0.18); font-size:0.8rem;">
+              預估消耗：計算中...
+            </div>
+          </div>
         </div>
 
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:14px; margin-bottom:14px;">
           <div>
-            <label>🌐 雲端服務商 / 模型</label>
+            <label for="cloudProviderSelect">🌐 雲端服務商與模型</label>
             <select id="cloudProviderSelect" onchange="onCloudProviderChange(this.value)">
-              <option value="cloud-minimax" selected>MiniMax 官方 (Hailuo Video-01 視訊模型)</option>
-              <option value="cloud-seedance">火山方舟 Ark (Doubao Seedance 1.0 Pro 首尾幀)</option>
-              <option value="cloud-fal">fal.ai 額度平台 (Seedance / Kling / Wan)</option>
-              <option value="cloud-openapi">第三方兼職轉接站 (/v1/video 相容)</option>
+              <option value="fal-hailuo" selected>fal.ai - MiniMax Hailuo 2.1 (預設推薦 · 國際高速)</option>
+              <option value="fal-kling">fal.ai - Kling Video 1.5/2.0 (首尾幀)</option>
+              <option value="minimax-official">MiniMax 官方開放平台 (Hailuo Video-01 直連)</option>
             </select>
           </div>
           <div>
-            <label>🔗 多段首尾幀銜接策略</label>
+            <label for="cloudChainModeSelect">🔗 首尾幀銜接策略</label>
             <select id="cloudChainModeSelect">
-              <option value="panel-anchor">⚡ 九宮格首尾幀錨定並行（多段同時在雲端算，1分鐘完成）</option>
-              <option value="strict-last-frame">🔗 嚴格銜接前段真實尾幀（排隊逐段生成）</option>
+              <option value="strict-last-frame" selected>🔗 連鎖無縫接力 (Sequential · 自動擷取前段真實尾格，100% 完美接縫)</option>
+              <option value="panel-anchor">⚡ 全並行極速 (Parallel · 九宮格分段同時送審，1~2 分鐘出全片)</option>
             </select>
           </div>
         </div>
 
-        <div style="margin-bottom:16px;">
-          <label for="cloudDirectApiKey">🔑 雲端服務 API Key（僅暫存於本機瀏覽器，安全不外洩）</label>
-          <input type="password" id="cloudDirectApiKey" placeholder="填入 API Key (例如 sk-...)，亦可在右上角齒輪設定中填寫" style="width:100%; background:#060a12; border:1px solid #1e3a5f; border-radius:6px; padding:9px 12px; color:#cbd5e1; font-size:0.86rem;" onchange="saveCloudDirectKey(this.value)" />
+        <div style="margin-bottom:18px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <label for="cloudDirectApiKey" id="cloudApiKeyLabel" style="margin:0;">🔑 fal.ai API Key</label>
+            <span id="cloudKeyStatusBadge" class="badge warn" style="font-size:0.7rem;">未填寫 Key</span>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <input type="password" id="cloudDirectApiKey" placeholder="請填入 fal.ai API Key (例如 12345678-abcd-...)" style="flex:1; background:#060a12; border:1px solid #1e3a5f; border-radius:8px; padding:10px 14px; color:#cbd5e1; font-size:0.88rem;" oninput="saveCloudDirectKey(this.value)" />
+            <button type="button" class="btn" onclick="openSettingsModal()" style="white-space:nowrap; padding:8px 14px; font-size:0.82rem;">⚙️ 密鑰管理</button>
+          </div>
+          <p style="margin:6px 0 0 0; font-size:0.75rem; color:#64748b;">
+            🔒 密鑰僅儲存於您本地瀏覽器的 <code>localStorage</code>，由 Cloudflare Worker 進行純記憶體零快取透傳，安全絕不外洩。
+          </p>
         </div>
 
-        <button type="button" id="startCloudVideoBtn" class="success" style="width:100%; justify-content:center; padding:13px; font-size:0.95rem;" onclick="executeCloudVideoStep()">
-          🚀 啟動雲端渲染（全自動呼吸卡片回報與縫合）
-        </button>
+        <div style="display:flex; gap:10px; margin-bottom:18px; flex-wrap:wrap;">
+          <button type="button" id="startCloudVideoBtn" class="success" style="flex:1; justify-content:center; padding:13px; font-size:0.95rem; font-weight:700;" onclick="executeCloudVideoStep()">
+            🚀 啟動雲端渲染（全自動端側接力與無縫拼接）
+          </button>
+          <button type="button" id="cancelCloudVideoBtn" class="btn" style="display:none; padding:13px 18px; font-size:0.9rem; border-color:#ef4444; color:#fca5a5; background:rgba(239,68,68,0.12);" onclick="cancelCloudVideoStep()">
+            ⏹️ 中止雲端生成
+          </button>
+        </div>
+
+        <!-- Real-time Cloud Pipeline Stage Tracker -->
+        <div id="cloudPipelineTrackerContainer" style="display:none; margin-top:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="font-size:0.92rem; color:#6ee7b7; margin:0; display:flex; align-items:center; gap:8px;">
+              <span>⏱️ 雲端並行 / 接力渲染進度</span>
+            </h4>
+            <span id="cloudOverallStatusBadge" class="badge ok" style="border-color:#10b981; color:#6ee7b7; background:rgba(16,185,129,0.18);">
+              進度：0%
+            </span>
+          </div>
+          <div id="cloudPipelineGrid" class="pipeline-tracker-grid"></div>
+        </div>
       </div>
 
       <!-- Mode 3: Local ComfyUI Panel (高技術門檻) -->
@@ -1223,11 +1260,19 @@
     <hr style="border:none; border-top:1px solid var(--border); margin: 12px 0;" />
 
     <div style="font-size:0.86rem; font-weight:700; color:#6ee7b7; margin-bottom:8px;">
-      ☁️ 雲端影像渲染服務配置（支援 Seedance / fal.ai / 兼容協定）
+      ☁️ 商業雲端視頻 API 密鑰配置（路線 2 專用 · 端側直連透傳）
     </div>
     <div class="form-group">
-      <label for="cloudVideoKeyInput">🔑 雲端影片服務 API 密鑰（火山方舟 Ark / BytePlus / fal.ai 等）</label>
-      <input type="password" id="cloudVideoKeyInput" placeholder="貼上雲端平台 API 密鑰..." />
+      <label for="falKeyInput">🔑 fal.ai API Key（預設推薦 · 支援 MiniMax Hailuo 2.1 / Kling 首尾幀）</label>
+      <input type="password" id="falKeyInput" placeholder="填入 fal.ai API Key (例如 12345678-abcd-...)" />
+    </div>
+    <div class="form-group">
+      <label for="minimaxKeyInput">🔑 MiniMax 官方開放平台 API Key（原生 Hailuo Video-01 直連）</label>
+      <input type="password" id="minimaxKeyInput" placeholder="填入 MiniMax API Key (例如 eyJhbGci...)" />
+    </div>
+    <div class="form-group">
+      <label for="cloudVideoKeyInput">🔑 火山方舟 Ark / BytePlus API 密鑰（Doubao Seedance 模型備用）</label>
+      <input type="password" id="cloudVideoKeyInput" placeholder="貼上火山引擎 API 密鑰..." />
     </div>
     <div style="display:grid; grid-template-columns: 1.2fr 0.8fr; gap:10px;">
       <div class="form-group">
@@ -1292,11 +1337,37 @@
     </div>
   </dialog>
 
+  <!-- Cloud API Cost Confirmation Modal -->
+  <dialog id="costConfirmDialog" style="max-width: 440px; border-radius: 14px; padding: 22px 24px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+      <h3 style="margin:0; font-size: 1.05rem; color: #10b981; display:flex; align-items:center; gap:8px;">
+        <span>💳 雲端 API 調用確認</span>
+      </h3>
+      <button type="button" onclick="closeCostConfirmDialog(false)" style="padding: 2px 8px; font-size: 1.2rem; line-height: 1; border-radius: 6px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor:pointer;">&times;</button>
+    </div>
+    <div style="font-size: 0.88rem; line-height: 1.6; color: #cbd5e1; margin-bottom: 16px;">
+      <p id="costConfirmMessage" style="margin-bottom: 12px;">即將調用雲端 API 發起影像生成任務。</p>
+      <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #6ee7b7;">
+        <strong>預估費用：</strong><span id="costConfirmEstimateText">約 $0.15 USD</span><br>
+        <span style="font-size:0.75rem; color:#94a3b8;">* 費用將直接自您綁定於 fal.ai 或 MiniMax 的帳號扣除，本平台不經手任何金流。</span>
+      </div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top: 14px; font-size: 0.82rem; color: #94a3b8; cursor:pointer;">
+        <input type="checkbox" id="costConfirmDontAskAgain" style="width:auto;" />
+        <span>本次工作階段不再提示確認</span>
+      </label>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap: 10px;">
+      <button type="button" onclick="closeCostConfirmDialog(false)" style="padding: 7px 16px; font-size: 0.85rem;">取消</button>
+      <button type="button" class="success" onclick="closeCostConfirmDialog(true)" style="padding: 7px 18px; font-size: 0.85rem;">確認發起 🚀</button>
+    </div>
+  </dialog>
+
   <!-- ==================== Core Modular Architecture ==================== -->
   <script src="src/core/timecodeHelper.js"></script>
   <script src="src/core/promptBuilder.js"></script>
   <script src="src/core/comfyPayload.js"></script>
   <script src="src/core/cloudDiagnostics.js"></script>
+  <script src="src/core/cloudApiAdapter.js"></script>
 
   <script>
     // ==================== Global State ====================
@@ -1428,11 +1499,13 @@
         step3Tag.style.color = "#7dd3fc";
         renderColabPipelineTracker();
       } else if (isCloud) {
-        step3Title.textContent = "步驟三：雲端並行渲染與片段生成";
+        step3Title.textContent = "步驟三：商業雲端 API 並行 / 接力渲染";
         step3Tag.textContent = "雲端 API 模式";
-        step3Tag.className = "badge warn";
-        step3Tag.style.borderColor = "";
-        step3Tag.style.color = "";
+        step3Tag.className = "badge ok";
+        step3Tag.style.borderColor = "#10b981";
+        step3Tag.style.color = "#6ee7b7";
+        syncCloudKeyUI();
+        updateCloudCostEstimate();
       } else {
         step3Title.textContent = "步驟三：本地 ComfyUI 管線示範與對齊";
         step3Tag.textContent = "本機示範模式";
@@ -2020,6 +2093,8 @@ python skills/minimax-h3-colab/scripts/runner.py chain --manifest colab_manifest
         openaiKey: localStorage.getItem("h3_openai_key") || "",
         openaiBaseUrl: (localStorage.getItem("h3_openai_base") || "https://api.openai.com/v1").replace(/\/+$/, ""),
         openaiModel: localStorage.getItem("h3_openai_model") || "gpt-4o",
+        falKey: localStorage.getItem("h3_fal_key") || "",
+        minimaxKey: localStorage.getItem("h3_minimax_key") || "",
         cloudVideoKey: localStorage.getItem("h3_cloud_video_key") || "",
         cloudVideoBaseUrl: (localStorage.getItem("h3_cloud_video_base") || "https://ark.cn-beijing.volces.com/api/v3").replace(/\/+$/, ""),
         cloudVideoModel: localStorage.getItem("h3_cloud_video_model") || "doubao-seedance-1-0-pro-250528",
@@ -2101,6 +2176,10 @@ python skills/minimax-h3-colab/scripts/runner.py chain --manifest colab_manifest
       document.getElementById("openaiKeyInput").value = p.openaiKey;
       document.getElementById("openaiBaseUrlInput").value = p.openaiBaseUrl;
       document.getElementById("openaiModelInput").value = p.openaiModel;
+      const falEl = document.getElementById("falKeyInput");
+      if (falEl) falEl.value = p.falKey;
+      const mmEl = document.getElementById("minimaxKeyInput");
+      if (mmEl) mmEl.value = p.minimaxKey;
       document.getElementById("cloudVideoKeyInput").value = p.cloudVideoKey;
       document.getElementById("cloudVideoBaseUrlInput").value = p.cloudVideoBaseUrl;
       document.getElementById("cloudVideoModelInput").value = p.cloudVideoModel;
@@ -2113,12 +2192,17 @@ python skills/minimax-h3-colab/scripts/runner.py chain --manifest colab_manifest
       localStorage.setItem("h3_openai_key", document.getElementById("openaiKeyInput").value.trim());
       localStorage.setItem("h3_openai_base", document.getElementById("openaiBaseUrlInput").value.trim());
       localStorage.setItem("h3_openai_model", document.getElementById("openaiModelInput").value.trim());
+      const falEl = document.getElementById("falKeyInput");
+      if (falEl) localStorage.setItem("h3_fal_key", falEl.value.trim());
+      const mmEl = document.getElementById("minimaxKeyInput");
+      if (mmEl) localStorage.setItem("h3_minimax_key", mmEl.value.trim());
       localStorage.setItem("h3_cloud_video_key", document.getElementById("cloudVideoKeyInput").value.trim());
       localStorage.setItem("h3_cloud_video_base", document.getElementById("cloudVideoBaseUrlInput").value.trim());
       localStorage.setItem("h3_cloud_video_model", document.getElementById("cloudVideoModelInput").value.trim());
       localStorage.setItem("h3_comfy_url", document.getElementById("comfyUrlInput").value.trim());
       document.getElementById("settingsDialog").close();
       checkComfyConnection();
+      syncCloudKeyUI();
     }
 
     function toggleTargetSecondsInput() {
@@ -2852,152 +2936,129 @@ Return ONLY valid JSON matching this schema:
       }
     }
 
-    // ==================== Step 3B: Cloud Seedance Generation ====================
-    async function callCloudVideoSegment(provider, prefs, promptText, firstFrameDataUrl, lastFrameDataUrl) {
-      if (!prefs.cloudVideoKey) {
-        openSettingsModal();
-        throw new Error("請先填入雲端影片 API Key");
+    // ==================== Step 3B: Commercial Cloud API Generation (fal.ai / MiniMax) ====================
+    let cloudPipelineAbortController = null;
+    let costConfirmPromiseResolve = null;
+
+    function syncCloudKeyUI() {
+      const select = document.getElementById("cloudProviderSelect");
+      if (!select) return;
+      const prov = select.value;
+      const labelEl = document.getElementById("cloudApiKeyLabel");
+      const keyInput = document.getElementById("cloudDirectApiKey");
+      const badgeEl = document.getElementById("cloudKeyStatusBadge");
+      const p = getPrefs();
+
+      let activeKey = "";
+      if (prov.startsWith("fal-")) {
+        if (labelEl) labelEl.textContent = "🔑 fal.ai API Key";
+        if (keyInput) keyInput.placeholder = "請填入 fal.ai API Key (例如 12345678-abcd-...)";
+        activeKey = p.falKey;
+      } else if (prov === "minimax-official") {
+        if (labelEl) labelEl.textContent = "🔑 MiniMax 官方 API Key";
+        if (keyInput) keyInput.placeholder = "請填入 MiniMax API Key (例如 eyJhbGci...)";
+        activeKey = p.minimaxKey;
+      } else {
+        if (labelEl) labelEl.textContent = "🔑 雲端 API Key";
+        activeKey = p.cloudVideoKey;
       }
 
-      if (provider === "cloud-minimax") {
-        const apiKey = localStorage.getItem("filmchain_minimax_key") || prefs.cloudVideoKey;
-        if (!apiKey) {
-          throw new Error("請先填入 MiniMax API Key");
-        }
-
-        const payload = {
-          model: "video-01",
-          prompt: promptText
-        };
-        if (firstFrameDataUrl) {
-          payload.first_frame_image = firstFrameDataUrl;
-        }
-
-        const createRes = await fetchWithProxy("https://api.minimax.chat/v1/video_generation", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify(payload),
-        });
-        if (!createRes.ok) throw new Error(`MiniMax 建立任務失敗 (${createRes.status}): ${await createRes.text()}`);
-        const createData = await createRes.json();
-        const taskId = createData.task_id;
-        if (!taskId) throw new Error(`MiniMax 回傳異常: ${JSON.stringify(createData)}`);
-
-        while (true) {
-          await new Promise(r => setTimeout(r, 4500));
-          const pollRes = await fetchWithProxy(`https://api.minimax.chat/v1/query/video_generation?task_id=${taskId}`, {
-            headers: { "Authorization": `Bearer ${apiKey}` },
-          });
-          if (!pollRes.ok) continue;
-          const pollData = await pollRes.json();
-          if (pollData.status === "Success") {
-            if (pollData.download_url) return pollData.download_url;
-            if (pollData.file_id) {
-              const fileRes = await fetchWithProxy(`https://api.minimax.chat/v1/files/retrieve?file_id=${pollData.file_id}`, {
-                headers: { "Authorization": `Bearer ${apiKey}` },
-              });
-              const fileData = await fileRes.json();
-              return fileData.file?.download_url || fileData.download_url;
-            }
-          }
-          if (pollData.status === "Fail") {
-            throw new Error(`MiniMax 任務失敗: ${pollData.base_resp?.status_msg || "未知錯誤"}`);
-          }
+      if (keyInput) keyInput.value = activeKey;
+      if (badgeEl) {
+        if (activeKey) {
+          badgeEl.className = "badge ok";
+          badgeEl.textContent = "🟢 Key 已就緒";
+        } else {
+          badgeEl.className = "badge warn";
+          badgeEl.textContent = "⚪ 未填寫 Key";
         }
       }
+    }
 
-      if (provider === "cloud-seedance") {
-        const contentArr = [
-          { type: "text", text: `${promptText} --duration 5` }
-        ];
-        if (firstFrameDataUrl) {
-          contentArr.push({ type: "image_url", image_url: { url: firstFrameDataUrl }, role: "first_frame" });
-        }
-        if (lastFrameDataUrl) {
-          contentArr.push({ type: "image_url", image_url: { url: lastFrameDataUrl }, role: "last_frame" });
-        }
-
-        const createRes = await fetchWithProxy(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${prefs.cloudVideoKey}`,
-          },
-          body: JSON.stringify({
-            model: prefs.cloudVideoModel || "doubao-seedance-1-0-pro-250528",
-            content: contentArr,
-          }),
-        });
-        if (!createRes.ok) throw new Error(`Seedance 建立任務失敗 (${createRes.status}): ${await createRes.text()}`);
-        const createData = await createRes.json();
-        const taskId = createData.id;
-
-        while (true) {
-          await new Promise(r => setTimeout(r, 4000));
-          const pollRes = await fetchWithProxy(`${prefs.cloudVideoBaseUrl}/contents/generations/tasks/${taskId}`, {
-            headers: { "Authorization": `Bearer ${prefs.cloudVideoKey}` },
-          });
-          if (!pollRes.ok) continue;
-          const pollData = await pollRes.json();
-          if (pollData.status === "succeeded") {
-            return pollData.content?.video_url || pollData.video_url;
-          }
-          if (pollData.status === "failed" || pollData.status === "cancelled") {
-            throw new Error(`Seedance 任務失敗: ${JSON.stringify(pollData.error || pollData)}`);
-          }
-        }
+    function saveCloudDirectKey(val) {
+      const select = document.getElementById("cloudProviderSelect");
+      const prov = select ? select.value : "fal-hailuo";
+      const key = val.trim();
+      if (prov.startsWith("fal-")) {
+        localStorage.setItem("h3_fal_key", key);
+      } else if (prov === "minimax-official") {
+        localStorage.setItem("h3_minimax_key", key);
+      } else {
+        localStorage.setItem("h3_cloud_video_key", key);
       }
+      syncCloudKeyUI();
+    }
 
-      if (provider === "cloud-fal") {
-        const modelPath = prefs.cloudVideoModel.includes("/") ? prefs.cloudVideoModel : "fal-ai/bytedance/seedance/v1/pro/image-to-video";
-        const createRes = await fetchWithProxy(`https://queue.fal.run/${modelPath}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Key ${prefs.cloudVideoKey}`,
-          },
-          body: JSON.stringify({
-            prompt: promptText,
-            image_url: firstFrameDataUrl,
-            end_image_url: lastFrameDataUrl,
-            duration: "5",
-          }),
-        });
-        if (!createRes.ok) throw new Error(`fal.ai 建立任務失敗: ${await createRes.text()}`);
-        const qData = await createRes.json();
-        while (true) {
-          await new Promise(r => setTimeout(r, 4000));
-          const sRes = await fetchWithProxy(qData.status_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
-          if (!sRes.ok) continue;
-          const sData = await sRes.json();
-          if (sData.status === "COMPLETED") {
-            const finalRes = await fetchWithProxy(qData.response_url, { headers: { "Authorization": `Key ${prefs.cloudVideoKey}` } });
-            const finalData = await finalRes.json();
-            return finalData.video?.url || finalData.video_url;
-          }
-          if (sData.status === "FAILED") throw new Error("fal.ai 任務失敗");
-        }
-      }
+    function onCloudProviderChange(val) {
+      syncCloudKeyUI();
+      updateCloudCostEstimate();
+    }
 
-      // Fallback OpenAPI
-      const createRes = await fetchWithProxy(`${prefs.cloudVideoBaseUrl}/video/generations`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${prefs.cloudVideoKey}` },
-        body: JSON.stringify({
-          model: prefs.cloudVideoModel,
-          prompt: promptText,
-          image: firstFrameDataUrl,
-          first_frame_image: firstFrameDataUrl,
-          last_frame_image: lastFrameDataUrl,
-          duration: 5,
-        }),
+    function updateCloudCostEstimate() {
+      const badge = document.getElementById("cloudCostBadge");
+      if (!badge || typeof H3CloudApiAdapter === "undefined") return;
+      const select = document.getElementById("cloudProviderSelect");
+      const prov = (select && select.value.startsWith("minimax")) ? "minimax" : "fal";
+      const segs = syncSegmentsFromDOM();
+      const count = segs.length || 3;
+      const cost = H3CloudApiAdapter.estimateCost(prov, count);
+      badge.textContent = `預估消耗：${cost.desc}`;
+    }
+
+    function showCostConfirmDialog({ message, estimateText }) {
+      const skip = localStorage.getItem("h3_skip_cost_confirm") === "true";
+      if (skip) return Promise.resolve(true);
+
+      return new Promise((resolve) => {
+        costConfirmPromiseResolve = resolve;
+        const msgEl = document.getElementById("costConfirmMessage");
+        const estEl = document.getElementById("costConfirmEstimateText");
+        if (msgEl && message) msgEl.textContent = message;
+        if (estEl && estimateText) estEl.textContent = estimateText;
+        const dialog = document.getElementById("costConfirmDialog");
+        if (dialog) dialog.showModal();
+        else resolve(true);
       });
-      if (!createRes.ok) throw new Error(`雲端 Video API 錯誤: ${await createRes.text()}`);
-      const createData = await createRes.json();
-      return createData.data?.[0]?.url || createData.video_url;
+    }
+
+    function closeCostConfirmDialog(confirmed) {
+      const dialog = document.getElementById("costConfirmDialog");
+      const dontAsk = document.getElementById("costConfirmDontAskAgain");
+      if (dontAsk && dontAsk.checked) {
+        localStorage.setItem("h3_skip_cost_confirm", "true");
+      }
+      if (dialog && dialog.open) dialog.close();
+      if (costConfirmPromiseResolve) {
+        costConfirmPromiseResolve(confirmed);
+        costConfirmPromiseResolve = null;
+      }
+    }
+
+    function renderCloudPipelineTracker(segments) {
+      const container = document.getElementById("cloudPipelineTrackerContainer");
+      const grid = document.getElementById("cloudPipelineGrid");
+      if (!container || !grid) return;
+      container.style.display = "block";
+
+      grid.innerHTML = segments.map((seg, idx) => `
+        <div id="cloud-part-card-${idx}" class="pipeline-step-card stage-render" style="min-height:95px;">
+          <div class="pipeline-step-num">
+            <span>Part ${idx + 1}</span>
+            <span id="cloud-card-tag-${idx}" class="badge warn" style="font-size:0.68rem; padding:2px 6px;">⏳ 排隊中</span>
+          </div>
+          <div class="pipeline-step-title" style="font-size:0.82rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(seg.title || ('Part ' + (idx + 1)))}</div>
+          <div id="cloud-card-log-${idx}" class="pipeline-step-desc" style="font-size:0.75rem; color:#94a3b8;">等候雲端調度...</div>
+          <div id="cloud-card-thumb-${idx}" style="display:none; margin-top:4px;"></div>
+        </div>
+      `).join("");
+    }
+
+    function cancelCloudVideoStep() {
+      if (cloudPipelineAbortController) {
+        cloudPipelineAbortController.abort();
+        cloudPipelineAbortController = null;
+        showToast("⏹️ 已發送雲端任務中止請求");
+      }
     }
 
     async function executeCloudVideoStep() {
@@ -3006,116 +3067,131 @@ Return ONLY valid JSON matching this schema:
         alert("請先在步驟一產出或新增至少 1 個分鏡段落");
         return;
       }
-      const provider = document.getElementById("cloudProviderSelect").value;
-      const chainMode = document.getElementById("cloudChainModeSelect").value;
-      const prefs = getPrefs();
+
+      const p = getPrefs();
+      const select = document.getElementById("cloudProviderSelect");
+      const providerVal = select ? select.value : "fal-hailuo";
+      const chainMode = document.getElementById("cloudChainModeSelect")?.value || "strict-last-frame";
+      const isParallel = chainMode === "panel-anchor";
+
+      let provider = "fal";
+      let model = "fal-ai/minimax-video/image-to-video";
+      let apiKey = p.falKey;
+
+      if (providerVal === "fal-kling") {
+        provider = "fal";
+        model = "fal-ai/kling-video/v1/standard/image-to-video";
+        apiKey = p.falKey;
+      } else if (providerVal === "minimax-official") {
+        provider = "minimax";
+        apiKey = p.minimaxKey;
+      }
+
+      if (!apiKey) {
+        alert("請先填入對應的雲端 API Key！");
+        const keyInput = document.getElementById("cloudDirectApiKey");
+        if (keyInput) keyInput.focus();
+        return;
+      }
+
+      const costEst = typeof H3CloudApiAdapter !== "undefined"
+        ? H3CloudApiAdapter.estimateCost(provider, segs.length)
+        : { desc: "依調用量計費" };
+
+      const confirmed = await showCostConfirmDialog({
+        message: `即將調用 ${providerVal} 發起 ${segs.length} 段分鏡渲染 (${isParallel ? '全並行極速' : '無縫接力'})。`,
+        estimateText: costEst.desc
+      });
+      if (!confirmed) return;
+
       const startBtn = document.getElementById("startCloudVideoBtn");
+      const cancelBtn = document.getElementById("cancelCloudVideoBtn");
       startBtn.disabled = true;
+      if (cancelBtn) cancelBtn.style.display = "inline-flex";
 
-      const sid = getOrCreateSessionId();
-      startSessionListener(sid);
+      renderCloudPipelineTracker(segs);
+      const overallBadge = document.getElementById("cloudOverallStatusBadge");
+      if (overallBadge) overallBadge.textContent = "運算進行中 0%";
 
-      document.getElementById("jobProgressPanel").style.display = "block";
-      document.getElementById("jobProgressBar").style.width = "10%";
-      document.getElementById("jobStageText").textContent = `☁️ 正在調用雲端 API 並行生成 ${segs.length} 段影片...`;
+      cloudPipelineAbortController = new AbortController();
+      const signal = cloudPipelineAbortController.signal;
+
+      const initialImage = slicedPanelsDataUrls[1] || gridImageDataUrl || "";
 
       try {
-        const clipUrls = [];
-        if (chainMode === "panel-anchor") {
-          const tasks = segs.map(async (seg, idx) => {
-            const startPanelIdx = idx === 0 ? 1 : (segs[idx - 1].end_panel || 3);
-            const endPanelIdx = seg.end_panel || Math.min(9, (idx + 1) * 3);
-            const firstFrame = slicedPanelsDataUrls[startPanelIdx] || gridImageDataUrl;
-            const lastFrame = slicedPanelsDataUrls[endPanelIdx] || "";
+        await H3CloudApiAdapter.runCloudPipeline({
+          provider,
+          apiKey,
+          segments: segs,
+          mode: isParallel ? "parallel" : "sequential",
+          initialImageUrl: initialImage,
+          panelDataUrls: slicedPanelsDataUrls,
+          signal,
+          onProgress: (idx, stage, pct, message) => {
+            const card = document.getElementById(`cloud-part-card-${idx}`);
+            const tag = document.getElementById(`cloud-card-tag-${idx}`);
+            const log = document.getElementById(`cloud-card-log-${idx}`);
+            if (card) {
+              if (stage === "rendering") card.className = "pipeline-step-card stage-render active-running";
+              else if (stage === "completed") card.className = "pipeline-step-card stage-done";
+            }
+            if (tag) {
+              if (stage === "completed") {
+                tag.className = "badge ok";
+                tag.textContent = "✅ 完成 (5s)";
+              } else if (stage === "rendering") {
+                tag.className = "badge ok";
+                tag.style.borderColor = "#38bdf8";
+                tag.style.color = "#7dd3fc";
+                tag.textContent = "🎨 渲染中";
+              } else if (stage === "extracting") {
+                tag.className = "badge warn";
+                tag.textContent = "🖼️ 擷取尾幀";
+              }
+            }
+            if (log) log.textContent = message;
 
-            fetch(`/api/session/${sid}/status`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                stage: `stage${idx + 1}`,
-                step_index: idx + 1,
-                total_steps: segs.length + 1,
-                percent: Math.round(((idx + 1) / (segs.length + 1)) * 70),
-                title: segs[idx].title,
-                log: `正在雲端運算 ${segs[idx].title}...`,
-                status: "running"
-              })
-            }).catch(() => {});
-
-            return callCloudVideoSegment(provider, prefs, seg.prompt, firstFrame, lastFrame);
-          });
-          const results = await Promise.all(tasks);
-          clipUrls.push(...results);
-        } else {
-          let prevLastFrame = slicedPanelsDataUrls[1] || gridImageDataUrl;
-          for (let i = 0; i < segs.length; i++) {
-            document.getElementById("jobStageText").textContent = `☁️ 正在雲端生成第 ${i + 1}/${segs.length} 段...`;
-            fetch(`/api/session/${sid}/status`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                stage: `stage${i + 1}`,
-                step_index: i + 1,
-                total_steps: segs.length + 1,
-                percent: Math.round(((i + 0.5) / (segs.length + 1)) * 80),
-                title: segs[i].title,
-                log: `正在雲端運算 ${segs[i].title}...`,
-                status: "running"
-              })
-            }).catch(() => {});
-
-            const targetLast = slicedPanelsDataUrls[segs[i].end_panel || 9] || "";
-            const url = await callCloudVideoSegment(provider, prefs, segs[i].prompt, prevLastFrame, targetLast);
-            clipUrls.push(url);
-            prevLastFrame = targetLast || prevLastFrame;
+            const totalPct = Math.round(((idx + (pct / 100)) / segs.length) * 100);
+            if (overallBadge) overallBadge.textContent = `總進度：${totalPct}%`;
+          },
+          onSegmentComplete: (idx, videoUrl) => {
+            const thumb = document.getElementById(`cloud-card-thumb-${idx}`);
+            if (thumb) {
+              thumb.style.display = "block";
+              thumb.innerHTML = `<video src="${videoUrl}" muted playsinline loop style="width:100%; max-height:85px; border-radius:6px; object-fit:cover; margin-top:4px;" onmouseover="this.play()" onmouseout="this.pause()"></video>`;
+            }
+            if (!currentPlaylist[idx]) currentPlaylist[idx] = {};
+            currentPlaylist[idx] = {
+              title: segs[idx].title,
+              url: videoUrl
+            };
+            if (!segmentHistory[idx]) segmentHistory[idx] = [];
+            segmentHistory[idx].push({
+              version: segmentHistory[idx].length + 1,
+              url: videoUrl,
+              prompt: segs[idx].prompt,
+              panel: segs[idx].end_panel || (idx + 1),
+            });
+            activeVersionIndex[idx] = segmentHistory[idx].length - 1;
           }
-        }
+        });
 
-        document.getElementById("jobProgressBar").style.width = "100%";
-        document.getElementById("jobStageText").textContent = `✅ 雲端 ${clipUrls.length} 段影片全部生成完畢！`;
-        document.getElementById("jobPercentText").textContent = "100%";
-
-        fetch(`/api/session/${sid}/status`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            stage: "complete",
-            step_index: segs.length + 1,
-            total_steps: segs.length + 1,
-            percent: 100,
-            title: "雲端生成就緒",
-            log: "全部分鏡已成功自雲端模型生成！",
-            status: "completed",
-            video_ready: true,
-            video_url: clipUrls[0]
-          })
-        }).catch(() => {});
-
-        renderSegmentsPlaylist(segs.map((s, i) => ({ title: s.title, url: clipUrls[i] })));
-        playVideoInStage(clipUrls[0], `☁️ ${segs[0].title}`);
+        if (overallBadge) overallBadge.textContent = "✅ 100% 全部完成！";
+        showToast("🎉 雲端所有分鏡已生成完成！正在端側自動拼接長片...");
+        renderSegmentsPlaylist(currentPlaylist);
+        await mergeAndDownloadCloudClips(false);
         playCompletionChime();
         document.getElementById("step4Card").scrollIntoView({ behavior: "smooth" });
       } catch (err) {
-        fetch(`/api/session/${sid}/status`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            stage: "stage1",
-            status: "error",
-            error_message: err.message,
-            percent: 0,
-            log: `雲端生成失敗: ${err.message}`
-          })
-        }).catch(() => {});
-
-        if (typeof H3CloudDiagnostics !== "undefined") {
-          const diag = H3CloudDiagnostics.diagnoseNetworkError(err, { url: prefs.cloudVideoBaseUrl, service: provider });
-          alert(`❌ ${diag.title}\n\n原因：${diag.reason}\n\n👉 建議作法：${diag.action}`);
+        if (err.name === "AbortError" || err.message.includes("中止")) {
+          showToast("⏹️ 雲端任務已由使用者中止");
         } else {
-          alert(`雲端生成失敗：${err.message}`);
+          alert(`雲端生成失敗: ${err.message}`);
         }
       } finally {
         startBtn.disabled = false;
+        if (cancelBtn) cancelBtn.style.display = "none";
+        cloudPipelineAbortController = null;
       }
     }
 
@@ -3350,47 +3426,71 @@ Return ONLY valid JSON matching this schema:
         } catch (e) {
           alert(`發布重抽任務失敗: ${e.message}`);
         }
-      } else if (selectedRoute === "cloud") {
-        const provider = document.getElementById("cloudProviderSelect").value;
-        const prefs = getPrefs();
-        const drawer = document.getElementById(`reroll-drawer-${idx}`);
-        if (drawer) drawer.style.display = "none";
+      } else if (activeRoute === "cloud") {
+        const select = document.getElementById("cloudProviderSelect");
+        const providerVal = select ? select.value : "fal-hailuo";
+        const p = getPrefs();
+        const provider = providerVal.startsWith("minimax") ? "minimax" : "fal";
+        const apiKey = provider === "minimax" ? p.minimaxKey : p.falKey;
+
+        if (!apiKey) {
+          alert("請先填入對應的雲端 API Key！");
+          return;
+        }
 
         const startIdx = idx;
         const endIdx = mode === "cascade" ? segs.length - 1 : idx;
+        const count = endIdx - startIdx + 1;
 
-        document.getElementById("jobProgressPanel").style.display = "block";
-        document.getElementById("jobProgressBar").style.width = "20%";
-        document.getElementById("jobStageText").textContent = `⚡ 正在雲端重抽 Part ${idx + 1}...`;
+        const costEst = typeof H3CloudApiAdapter !== "undefined"
+          ? H3CloudApiAdapter.estimateCost(provider, count)
+          : { desc: "依調用量計費" };
 
-        const renderCard = document.getElementById(`stage-card-part-${idx + 1}`);
-        if (renderCard) {
-          renderCard.className = "pipeline-step-card stage-render active-running";
-        }
+        const confirmed = await showCostConfirmDialog({
+          message: `即將發起 Part ${idx + 1} 雲端重抽任務 (${mode === 'cascade' ? '連鎖重跑' : '僅本段'})。`,
+          estimateText: costEst.desc
+        });
+        if (!confirmed) return;
+
+        const drawer = document.getElementById(`reroll-drawer-${idx}`);
+        if (drawer) drawer.style.display = "none";
+
+        showToast(`⚡ 正在發起 Part ${idx + 1} 雲端重抽任務...`);
 
         try {
-          let prevFrame = idx === 0 ? (slicedPanelsDataUrls[1] || gridImageDataUrl) : (slicedPanelsDataUrls[segs[idx - 1]?.end_panel || 3] || "");
+          const client = provider === "minimax" ? H3CloudApiAdapter.MiniMaxClient : H3CloudApiAdapter.FalClient;
+
+          let prevFrame = "";
+          if (idx === 0) {
+            prevFrame = slicedPanelsDataUrls[1] || gridImageDataUrl || "";
+          } else {
+            const prevVid = currentPlaylist[idx - 1]?.url;
+            if (prevVid) {
+              prevFrame = await H3CloudApiAdapter.extractLastFrameFromVideo(prevVid).catch(() => "");
+            }
+            if (!prevFrame) {
+              prevFrame = slicedPanelsDataUrls[segs[idx - 1]?.end_panel || 3] || "";
+            }
+          }
+
           for (let i = startIdx; i <= endIdx; i++) {
             const curPrompt = i === idx ? promptText : segs[i].prompt;
             const curPanel = i === idx ? panel : (segs[i].end_panel || 9);
-            const targetLast = slicedPanelsDataUrls[curPanel] || "";
 
-            fetch(`/api/session/${sid}/status`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                stage: `stage${i + 1}`,
-                step_index: i + 1,
-                total_steps: segs.length + 1,
-                percent: Math.round(((i + 1) / (segs.length + 1)) * 80),
-                title: segs[i].title,
-                log: `正在重抽運算 ${segs[i].title}...`,
-                status: "running"
-              })
-            }).catch(() => {});
+            showToast(`🎨 正在雲端算力中渲染 Part ${i + 1}...`);
+            const subRes = await client.submitTask({ apiKey, prompt: curPrompt, firstFrameUrl: prevFrame });
 
-            const newUrl = await callCloudVideoSegment(provider, prefs, curPrompt, prevFrame, targetLast);
-            prevFrame = targetLast || prevFrame;
+            let newUrl = "";
+            if (subRes.direct) {
+              newUrl = subRes.videoUrl;
+            } else {
+              const pollRes = await client.pollTask({
+                apiKey,
+                requestId: subRes.requestId,
+                taskId: subRes.taskId,
+              });
+              newUrl = pollRes.videoUrl;
+            }
 
             if (!segmentHistory[i]) segmentHistory[i] = [];
             const newVer = segmentHistory[i].length + 1;
@@ -3403,6 +3503,15 @@ Return ONLY valid JSON matching this schema:
             });
             activeVersionIndex[i] = segmentHistory[i].length - 1;
             currentPlaylist[i].url = newUrl;
+
+            // Extract last frame for cascade next segment
+            if (i < endIdx) {
+              try {
+                prevFrame = await H3CloudApiAdapter.extractLastFrameFromVideo(newUrl);
+              } catch (e) {
+                prevFrame = slicedPanelsDataUrls[curPanel] || prevFrame;
+              }
+            }
           }
 
           renderSegmentsPlaylist(currentPlaylist);
@@ -3410,7 +3519,7 @@ Return ONLY valid JSON matching this schema:
           await mergeAndDownloadCloudClips(false, Math.max(0, (idx * 5) - 1.5));
           playCompletionChime();
         } catch (err) {
-          alert(`重抽失敗: ${err.message}`);
+          alert(`雲端重抽失敗: ${err.message}`);
         }
       } else {
         alert("本地 ComfyUI 請直接重新執行排程任務。");
@@ -3556,6 +3665,24 @@ Return ONLY valid JSON matching this schema:
           }
         });
       }
+
+      const costDialog = document.getElementById("costConfirmDialog");
+      if (costDialog) {
+        costDialog.addEventListener("click", (e) => {
+          const rect = costDialog.getBoundingClientRect();
+          if (
+            e.clientX < rect.left ||
+            e.clientX > rect.right ||
+            e.clientY < rect.top ||
+            e.clientY > rect.bottom
+          ) {
+            closeCostConfirmDialog(false);
+          }
+        });
+      }
+
+      syncCloudKeyUI();
+      updateCloudCostEstimate();
 
       const player = document.getElementById("mainVideoPlayer");
       player.addEventListener("ended", () => {

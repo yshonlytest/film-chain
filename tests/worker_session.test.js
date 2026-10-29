@@ -193,4 +193,75 @@ test("Cloudflare Worker - Session Relay API Tests", async (t) => {
     assert.equal(data.cancelled, true);
     assert.equal(data.reason, "使用者要求中止");
   });
+
+  await t.test("should reject proxy call when target URL is missing", async () => {
+    const req = new Request("https://film-chain.onlytest.dev/api/proxy");
+    const res = await worker.fetch(req, env);
+    assert.equal(res.status, 400);
+    const data = await res.json();
+    assert.match(data.error, /缺少目標 URL/);
+  });
+
+  await t.test("should route /api/proxy/fal prefix to queue.fal.run", async () => {
+    // Intercept global fetch for testing
+    const originalFetch = globalThis.fetch;
+    let interceptedUrl = "";
+    let interceptedAuth = "";
+    globalThis.fetch = async (url, options) => {
+      interceptedUrl = String(url);
+      interceptedAuth = options.headers.get("Authorization");
+      return new Response(JSON.stringify({ ok: true, video: { url: "https://fal.media/sample.mp4" } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    };
+
+    try {
+      const req = new Request("https://film-chain.onlytest.dev/api/proxy/fal/fal-ai/minimax-video/image-to-video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Api-Key": "fal_test_secret_key"
+        },
+        body: JSON.stringify({ prompt: "A running shisa lion" })
+      });
+      const res = await worker.fetch(req, env);
+      assert.equal(res.status, 200);
+      assert.equal(interceptedUrl, "https://queue.fal.run/fal-ai/minimax-video/image-to-video");
+      assert.equal(interceptedAuth, "Key fal_test_secret_key");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  await t.test("should route /api/proxy/minimax prefix to api.minimax.chat", async () => {
+    const originalFetch = globalThis.fetch;
+    let interceptedUrl = "";
+    let interceptedAuth = "";
+    globalThis.fetch = async (url, options) => {
+      interceptedUrl = String(url);
+      interceptedAuth = options.headers.get("Authorization");
+      return new Response(JSON.stringify({ task_id: "123456" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    };
+
+    try {
+      const req = new Request("https://film-chain.onlytest.dev/api/proxy/minimax/video_generation", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-Api-Key": "minimax_test_key"
+        },
+        body: JSON.stringify({ prompt: "A smiling shisa lion" })
+      });
+      const res = await worker.fetch(req, env);
+      assert.equal(res.status, 200);
+      assert.equal(interceptedUrl, "https://api.minimax.chat/v1/video_generation");
+      assert.equal(interceptedAuth, "Bearer minimax_test_key");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
 });

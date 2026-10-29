@@ -11,7 +11,7 @@ function corsHeaders(extra = {}) {
   return {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, Range, X-Target-URL, X-Requested-With",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, Range, X-Target-URL, X-Requested-With, X-User-Api-Key",
     "Access-Control-Expose-Headers": "Content-Range, Accept-Ranges, Content-Length",
     ...extra,
   };
@@ -469,9 +469,23 @@ export default {
 
     // ==================== 2. CORS 反向代理端點 ====================
     if (url.pathname.startsWith("/api/proxy")) {
-      const targetUrl = request.headers.get("X-Target-URL") || url.searchParams.get("target");
+      let targetUrl = "";
+      const pathSuffix = url.pathname.replace(/^\/api\/proxy/, "").replace(/^\/+/, "");
+
+      // 支援專屬前綴路由: /api/proxy/fal/... 或 /api/proxy/minimax/...
+      if (pathSuffix.startsWith("fal/")) {
+        const subPath = pathSuffix.replace(/^fal\//, "");
+        const base = subPath.startsWith("fal-ai/") || subPath.includes("/") ? "https://queue.fal.run" : "https://fal.run";
+        targetUrl = `${base}/${subPath}${url.search}`;
+      } else if (pathSuffix.startsWith("minimax/")) {
+        const subPath = pathSuffix.replace(/^minimax\//, "");
+        targetUrl = `https://api.minimax.chat/v1/${subPath}${url.search}`;
+      } else {
+        targetUrl = request.headers.get("X-Target-URL") || url.searchParams.get("target");
+      }
+
       if (!targetUrl) {
-        return new Response(JSON.stringify({ error: "缺少目標 URL (請帶上 X-Target-URL 標頭或 target 參數)" }), {
+        return new Response(JSON.stringify({ error: "缺少目標 URL (請帶上 X-Target-URL 標頭或 target 參數，或使用 /api/proxy/fal/... 與 /api/proxy/minimax/... 前綴路由)" }), {
           status: 400,
           headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
         });
@@ -483,6 +497,16 @@ export default {
           const lower = key.toLowerCase();
           if (!["host", "cf-connecting-ip", "cf-ray", "cf-visitor", "x-target-url", "origin", "referer"].includes(lower)) {
             forwardHeaders.set(key, value);
+          }
+        }
+
+        // 智慧映射 x-user-api-key 至上游標準授權標頭
+        const userApiKey = request.headers.get("X-User-Api-Key");
+        if (userApiKey && !forwardHeaders.has("authorization")) {
+          if (targetUrl.includes("fal.run")) {
+            forwardHeaders.set("Authorization", `Key ${userApiKey}`);
+          } else {
+            forwardHeaders.set("Authorization", `Bearer ${userApiKey}`);
           }
         }
 
