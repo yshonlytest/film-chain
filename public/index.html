@@ -3007,11 +3007,18 @@ Return ONLY valid JSON matching this schema:
     }
 
     // ==================== Step 4: Playback, Seamless Player & In-Browser Merge ====================
-    function playVideoInStage(url, labelText, autoPlay = true) {
+    function playVideoInStage(url, labelText, autoPlay = true, seekToTime = null) {
       const player = document.getElementById("mainVideoPlayer");
       player.src = url;
       player.load();
-      if (autoPlay) {
+      if (seekToTime !== null && typeof seekToTime === "number") {
+        player.onloadedmetadata = () => {
+          player.currentTime = Math.max(0, seekToTime);
+          if (autoPlay) {
+            player.play().catch(() => {});
+          }
+        };
+      } else if (autoPlay) {
         player.play().catch(() => {});
       }
       document.getElementById("currentVideoLabel").textContent = labelText;
@@ -3029,22 +3036,26 @@ Return ONLY valid JSON matching this schema:
       playVideoInStage(currentPlaylist[0].url, `▶️ 連播中 (第 1/${currentPlaylist.length} 段)：${currentPlaylist[0].title}`);
     }
 
-    async function mergeAndDownloadCloudClips() {
+    async function mergeAndDownloadCloudClips(autoDownload = true, seekTime = null) {
       if (!currentPlaylist.length) {
         alert("目前沒有分段影片清單可合併");
         return;
       }
       if (currentPlaylist.length === 1 || currentPlaylist[0].title.includes("完整合併總影片")) {
-        const a = document.createElement("a");
-        a.href = currentPlaylist[0].url;
-        a.download = "shisa_15s_story_merged.mp4";
-        a.click();
+        if (autoDownload) {
+          const a = document.createElement("a");
+          a.href = currentPlaylist[0].url;
+          a.download = "shisa_15s_story_merged.mp4";
+          a.click();
+        }
         return;
       }
 
       const btn = document.getElementById("browserMergeBtn");
-      btn.disabled = true;
-      btn.textContent = "⏳ 正在前端記憶體串接錄製中...";
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = "⏳ 正在前端記憶體串接錄製中...";
+      }
 
       const statusBox = document.getElementById("jobStageText");
       document.getElementById("jobProgressPanel").style.display = "block";
@@ -3111,19 +3122,185 @@ Return ONLY valid JSON matching this schema:
         const finalUrl = URL.createObjectURL(finalBlob);
 
         document.getElementById("jobProgressBar").style.width = "100%";
-        statusBox.textContent = "✅ 前端純網頁串接合併完成！已自動觸發下載。";
+        statusBox.textContent = "✅ 前端純網頁串接合併完成！已自動就緒。";
 
-        const a = document.createElement("a");
-        a.href = finalUrl;
-        a.download = `merged_${currentPlan?.project_slug || "storyboard"}_full.webm`;
-        a.click();
+        if (autoDownload) {
+          const a = document.createElement("a");
+          a.href = finalUrl;
+          a.download = `merged_${currentPlan?.project_slug || "storyboard"}_full.webm`;
+          a.click();
+        }
 
-        playVideoInStage(finalUrl, "🎬 前端純網頁合併完成品 (已可播放或下載)");
+        // Upload merged video to session video endpoint
+        const sid = getOrCreateSessionId();
+        fetch(`/api/session/${sid}/video`, {
+          method: "POST",
+          headers: { "Content-Type": "video/webm" },
+          body: finalBlob
+        }).catch(() => {});
+
+        playVideoInStage(finalUrl, "🎬 前端無縫合併完成品", true, seekTime);
+        return finalUrl;
       } catch (err) {
         alert(`前端合併失敗：${err.message}`);
       } finally {
-        btn.disabled = false;
-        btn.textContent = "🎬 純前端一鍵合併 MP4";
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = "🎬 純前端一鍵合併 MP4";
+        }
+      }
+    }
+
+    let segmentHistory = {};
+    let activeVersionIndex = {};
+
+    function toggleRerollDrawer(idx) {
+      const drawer = document.getElementById(`reroll-drawer-${idx}`);
+      if (!drawer) return;
+      drawer.style.display = drawer.style.display === "none" ? "block" : "none";
+    }
+
+    function randomizeRerollSeed(idx) {
+      const input = document.getElementById(`reroll-seed-${idx}`);
+      if (input) {
+        input.value = Math.floor(Math.random() * 89999999 + 10000000);
+      }
+    }
+
+    async function switchSegmentVersion(idx, verIndex) {
+      if (!segmentHistory[idx] || !segmentHistory[idx][verIndex]) return;
+      activeVersionIndex[idx] = verIndex;
+      const target = segmentHistory[idx][verIndex];
+      currentPlaylist[idx].url = target.url;
+      if (currentPlan && currentPlan.segments && currentPlan.segments[idx]) {
+        currentPlan.segments[idx].prompt = target.prompt;
+        currentPlan.segments[idx].end_panel = target.panel;
+      }
+      renderSegmentsPlaylist(currentPlaylist);
+      showToast(`🔄 已切換為 Part ${idx + 1} v${verIndex + 1}，正在重新縫合全片...`);
+      await mergeAndDownloadCloudClips(false, Math.max(0, (idx * 5) - 1.5));
+    }
+
+    async function triggerRerollExecution(idx, mode) {
+      const promptEl = document.getElementById(`reroll-prompt-${idx}`);
+      const panelEl = document.getElementById(`reroll-panel-${idx}`);
+      const seedEl = document.getElementById(`reroll-seed-${idx}`);
+      const promptText = promptEl ? promptEl.value.trim() : "";
+      const panel = panelEl ? parseInt(panelEl.value, 10) : 9;
+      const seed = seedEl ? parseInt(seedEl.value, 10) : 20260931 + idx;
+
+      if (!promptText) {
+        alert("請輸入重抽提示詞！");
+        return;
+      }
+
+      if (currentPlan && currentPlan.segments && currentPlan.segments[idx]) {
+        currentPlan.segments[idx].prompt = promptText;
+        currentPlan.segments[idx].end_panel = panel;
+      }
+
+      const sid = getOrCreateSessionId();
+      const segs = syncSegmentsFromDOM();
+
+      if (selectedRoute === "colab") {
+        showToast(`🚀 正在向雲端中繼下發 Part ${idx + 1} 重抽任務 (${mode === 'single' ? '單段' : '連鎖'})...`);
+        const rerollTarget = {
+          part_index: idx + 1,
+          mode: mode,
+          prompt: promptText,
+          end_panel: panel,
+          seed: seed,
+          cascade: mode === "cascade"
+        };
+
+        try {
+          await fetch(`/api/session/${sid}/manifest`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ reroll_target: rerollTarget })
+          });
+
+          const renderCard = document.getElementById(`stage-card-part-${idx + 1}`);
+          if (renderCard) {
+            renderCard.className = "pipeline-step-card stage-render active-running";
+            const timeEl = renderCard.querySelector(".pipeline-step-time");
+            if (timeEl) timeEl.textContent = "重抽推論中...";
+          }
+
+          startSessionListener(sid);
+          const cmd = `python skills/minimax-h3-colab/scripts/runner.py chain --session-id ${sid} --reroll ${idx + 1} ${mode === "cascade" ? "--cascade" : ""}`;
+          const ta = document.getElementById("colabPromptTextarea");
+          if (ta) ta.value = cmd;
+
+          showToast(`✅ Part ${idx + 1} 重抽已下發！已更新終端指令，Colab 將自動接單。`);
+          document.getElementById("step3Card").scrollIntoView({ behavior: "smooth" });
+        } catch (e) {
+          alert(`發布重抽任務失敗: ${e.message}`);
+        }
+      } else if (selectedRoute === "cloud") {
+        const provider = document.getElementById("cloudProviderSelect").value;
+        const prefs = getPrefs();
+        const drawer = document.getElementById(`reroll-drawer-${idx}`);
+        if (drawer) drawer.style.display = "none";
+
+        const startIdx = idx;
+        const endIdx = mode === "cascade" ? segs.length - 1 : idx;
+
+        document.getElementById("jobProgressPanel").style.display = "block";
+        document.getElementById("jobProgressBar").style.width = "20%";
+        document.getElementById("jobStageText").textContent = `⚡ 正在雲端重抽 Part ${idx + 1}...`;
+
+        const renderCard = document.getElementById(`stage-card-part-${idx + 1}`);
+        if (renderCard) {
+          renderCard.className = "pipeline-step-card stage-render active-running";
+        }
+
+        try {
+          let prevFrame = idx === 0 ? (slicedPanelsDataUrls[1] || gridImageDataUrl) : (slicedPanelsDataUrls[segs[idx - 1]?.end_panel || 3] || "");
+          for (let i = startIdx; i <= endIdx; i++) {
+            const curPrompt = i === idx ? promptText : segs[i].prompt;
+            const curPanel = i === idx ? panel : (segs[i].end_panel || 9);
+            const targetLast = slicedPanelsDataUrls[curPanel] || "";
+
+            fetch(`/api/session/${sid}/status`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                stage: `stage${i + 1}`,
+                step_index: i + 1,
+                total_steps: segs.length + 1,
+                percent: Math.round(((i + 1) / (segs.length + 1)) * 80),
+                title: segs[i].title,
+                log: `正在重抽運算 ${segs[i].title}...`,
+                status: "running"
+              })
+            }).catch(() => {});
+
+            const newUrl = await callCloudVideoSegment(provider, prefs, curPrompt, prevFrame, targetLast);
+            prevFrame = targetLast || prevFrame;
+
+            if (!segmentHistory[i]) segmentHistory[i] = [];
+            const newVer = segmentHistory[i].length + 1;
+            segmentHistory[i].push({
+              version: newVer,
+              url: newUrl,
+              prompt: curPrompt,
+              panel: curPanel,
+              seed: seed
+            });
+            activeVersionIndex[i] = segmentHistory[i].length - 1;
+            currentPlaylist[i].url = newUrl;
+          }
+
+          renderSegmentsPlaylist(currentPlaylist);
+          showToast(`🎉 Part ${idx + 1} 重抽完成！正在重新縫合全片...`);
+          await mergeAndDownloadCloudClips(false, Math.max(0, (idx * 5) - 1.5));
+          playCompletionChime();
+        } catch (err) {
+          alert(`重抽失敗: ${err.message}`);
+        }
+      } else {
+        alert("本地 ComfyUI 請直接重新執行排程任務。");
       }
     }
 
@@ -3133,14 +3310,87 @@ Return ONLY valid JSON matching this schema:
       const list = document.getElementById("cloudClipsList");
       box.style.display = "block";
       list.innerHTML = "";
+
+      const segs = syncSegmentsFromDOM();
+
       currentPlaylist.forEach((item, idx) => {
+        const seg = segs[idx] || (currentPlan?.segments ? currentPlan.segments[idx] : null);
+        const promptVal = seg ? seg.prompt : "";
+        const panelVal = seg ? (seg.end_panel || 9) : 9;
+
+        if (!segmentHistory[idx]) {
+          segmentHistory[idx] = [
+            { version: 1, url: item.url, prompt: promptVal, panel: panelVal, seed: 20260931 + idx }
+          ];
+          activeVersionIndex[idx] = 0;
+        }
+
+        const activeVer = (activeVersionIndex[idx] || 0) + 1;
+        const totalVers = segmentHistory[idx].length;
+
+        let versionsHtml = "";
+        segmentHistory[idx].forEach((v, vIdx) => {
+          const isAct = vIdx === (activeVersionIndex[idx] || 0);
+          versionsHtml += `
+            <button type="button" class="btn" style="padding:2px 8px; font-size:0.72rem; ${isAct ? 'border-color:#38bdf8; background:rgba(56,189,248,0.25); color:#7dd3fc; font-weight:700;' : 'background:#0b1322; color:#94a3b8;'}" onclick="switchSegmentVersion(${idx}, ${vIdx})">
+              v${v.version}${isAct ? ' (使用中)' : ''}
+            </button>
+          `;
+        });
+
         const row = document.createElement("div");
-        row.className = "cloud-clip-item";
+        row.className = "cloud-clip-row-container";
+        row.style.marginBottom = "8px";
         row.innerHTML = `
-          <span>🎬 ${item.title}</span>
-          <div style="display:flex; gap:6px;">
-            <button type="button" style="padding:3px 9px; font-size:0.75rem;" onclick="playVideoInStage('${item.url}', '${item.title}')">▶️ 播放此段</button>
-            <a class="btn" href="${item.url}" download style="padding:3px 9px; font-size:0.75rem;">⬇️ 下載</a>
+          <div class="cloud-clip-item" style="display:flex; justify-content:space-between; align-items:center; padding:9px 12px; background:#070d1a; border:1px solid #1e293b; border-radius:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span style="font-weight:600; color:#e0f2fe;">🎬 ${escapeHtml(item.title)}</span>
+              <span class="badge ok" style="font-size:0.68rem; padding:2px 6px;">v${activeVer} / 共 ${totalVers} 版</span>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn" style="padding:4px 10px; font-size:0.75rem;" onclick="playVideoInStage('${item.url}', '${escapeHtml(item.title)}')">▶️ 單段試播</button>
+              <button type="button" class="btn" style="padding:4px 10px; font-size:0.75rem; border-color:#38bdf8; color:#7dd3fc; background:rgba(56,189,248,0.14); font-weight:600;" onclick="toggleRerollDrawer(${idx})">🔄 重抽 / 微調</button>
+              <a class="btn" href="${item.url}" download style="padding:4px 10px; font-size:0.75rem;">⬇️ 下載</a>
+            </div>
+          </div>
+
+          <div id="reroll-drawer-${idx}" style="display:none; background:#050914; border:1px solid #1e3a5f; border-top:none; border-radius:0 0 8px 8px; padding:12px 14px; margin-top:-2px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:6px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.74rem; color:#94a3b8;">📚 版本歷程 (可隨時切換復原)：</span>
+                ${versionsHtml}
+              </div>
+              <div style="font-size:0.72rem; color:#64748b;">重抽後自動保留舊版，隨時可切換無損重縫</div>
+            </div>
+
+            <div style="margin-bottom:10px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                <label style="font-size:0.76rem; color:#cbd5e1; font-weight:600;">📝 本段 Prompt (微調對白或鏡頭)</label>
+                <div style="display:flex; align-items:center; gap:6px;">
+                  <span style="font-size:0.72rem; color:#94a3b8;">目標尾幀：</span>
+                  <select id="reroll-panel-${idx}" style="padding:3px 6px; font-size:0.76rem; width:90px; background:#091222; color:#cbd5e1; border:1px solid #1e293b; border-radius:4px;">
+                    ${[1,2,3,4,5,6,7,8,9].map(n => `<option value="${n}" ${n === panelVal ? 'selected' : ''}>Panel ${n}</option>`).join('')}
+                  </select>
+                </div>
+              </div>
+              <textarea id="reroll-prompt-${idx}" rows="3" style="width:100%; font-size:0.8rem; background:#070d1a; color:#cbd5e1; border:1px solid #1e293b; border-radius:6px; padding:6px 8px; resize:vertical; line-height:1.4;">${escapeHtml(promptVal)}</textarea>
+            </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.72rem; color:#94a3b8;">🎲 Seed:</span>
+                <input type="number" id="reroll-seed-${idx}" value="${20260931 + idx}" style="width:105px; padding:4px 6px; font-size:0.75rem; background:#070d1a; border:1px solid #1e293b; color:#cbd5e1; border-radius:4px;" />
+                <button type="button" class="btn" style="padding:3px 8px; font-size:0.72rem;" onclick="randomizeRerollSeed(${idx})">🎲 換種子</button>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <button type="button" class="btn" style="padding:6px 14px; font-size:0.8rem; background:linear-gradient(135deg, #0284c7, #0369a1); border-color:#38bdf8; color:#fff; font-weight:700; box-shadow:0 2px 8px rgba(2,132,199,0.3);" onclick="triggerRerollExecution(${idx}, 'single')">
+                  ⚡ 僅重抽此段 (5s 快速替換)
+                </button>
+                <button type="button" class="btn" style="padding:6px 14px; font-size:0.8rem; background:linear-gradient(135deg, #7c3aed, #6d28d9); border-color:#a855f7; color:#fff; font-weight:700; box-shadow:0 2px 8px rgba(124,58,237,0.3);" onclick="triggerRerollExecution(${idx}, 'cascade')">
+                  🔗 自此段起連鎖重跑 (極致無縫)
+                </button>
+              </div>
+            </div>
           </div>
         `;
         list.appendChild(row);

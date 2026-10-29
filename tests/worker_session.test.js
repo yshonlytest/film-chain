@@ -135,6 +135,24 @@ test("Cloudflare Worker - Session Relay API Tests", async (t) => {
     const data = await getRes.json();
     assert.equal(data.project_name, "Test Film");
     assert.equal(data.segments.length, 2);
+
+    // Test PATCH reroll_target
+    const patchReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/manifest", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        reroll_target: { part_index: 2, mode: "single", prompt: "Updated prompt 2" }
+      })
+    });
+    const patchRes = await worker.fetch(patchReq, env);
+    assert.equal(patchRes.status, 200);
+
+    const getPatchedReq = new Request("https://film-chain.onlytest.dev/api/session/test_123/manifest");
+    const getPatchedRes = await worker.fetch(getPatchedReq, env);
+    const patchedData = await getPatchedRes.json();
+    assert.equal(patchedData.project_name, "Test Film");
+    assert.equal(patchedData.reroll_target.part_index, 2);
+    assert.equal(patchedData.reroll_target.mode, "single");
   });
 
   await t.test("should upload and retrieve reference image binary", async () => {

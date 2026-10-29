@@ -10,7 +10,7 @@
 function corsHeaders(extra = {}) {
   return {
     "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type, Authorization, Range, X-Target-URL, X-Requested-With",
     "Access-Control-Expose-Headers": "Content-Range, Accept-Ranges, Content-Length",
     ...extra,
@@ -104,8 +104,31 @@ export default {
         }
       }
 
-      // 1.25 GET / POST /api/session/:id/manifest - 分鏡任務清單同步
+      // 1.25 GET / POST / PATCH /api/session/:id/manifest - 分鏡任務清單同步
       if (action === "manifest") {
+        if (request.method === "PATCH") {
+          try {
+            const patchData = await request.json();
+            let current = {};
+            if (kv) {
+              const raw = await kv.get(`session:${sessionId}:manifest`);
+              if (raw) {
+                try { current = JSON.parse(raw); } catch (e) {}
+              }
+              const merged = { ...current, ...patchData };
+              await kv.put(`session:${sessionId}:manifest`, JSON.stringify(merged), { expirationTtl: 86400 });
+            }
+            return new Response(JSON.stringify({ ok: true, session_id: sessionId }), {
+              status: 200,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          } catch (err) {
+            return new Response(JSON.stringify({ error: `Manifest 更新失敗: ${err.message}` }), {
+              status: 400,
+              headers: corsHeaders({ "Content-Type": "application/json; charset=utf-8" }),
+            });
+          }
+        }
         if (request.method === "POST" || request.method === "PUT") {
           try {
             const manifestData = await request.json();

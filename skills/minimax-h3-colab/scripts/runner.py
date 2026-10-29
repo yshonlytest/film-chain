@@ -730,6 +730,8 @@ def run_chain(
     high_mem: bool = True,
     output_dir: Path = Path("output"),
     exec_timeout: float = 3600.0,
+    reroll: int | None = None,
+    cascade: bool = False,
 ) -> dict[str, Any]:
     reporter = SessionRelayReporter(relay_url, session_id)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -762,13 +764,26 @@ def run_chain(
     slug = manifest.get("project", "story")
     total_seconds = manifest.get("total_seconds", total_jobs * 5)
 
+    reroll_target = manifest.get("reroll_target")
+    if reroll is None and isinstance(reroll_target, dict):
+        reroll = reroll_target.get("part_index")
+        if not cascade:
+            cascade = (reroll_target.get("mode") == "cascade") or bool(reroll_target.get("cascade"))
+
+    reroll_indices: set[int] = set()
+    if reroll is not None and 1 <= reroll <= total_jobs:
+        if cascade:
+            reroll_indices = set(range(reroll, total_jobs + 1))
+        else:
+            reroll_indices = {reroll}
+
     reporter.report(
         "stage0",
         step_index=0,
         total_steps=total_jobs + 1,
         percent=5,
         title="環境與授權檢測",
-        log="正在驗證 Colab OAuth 與 Compute Units 餘額，準備指派 A100 GPU...",
+        log=f"正在驗證 Colab OAuth 與 Compute Units 餘額，準備指派 A100 GPU...{' (重抽 Part ' + str(reroll) + ')' if reroll else ''}",
     )
 
     part_outputs: list[Path] = []
@@ -810,6 +825,24 @@ def run_chain(
             pct = 10 + int((idx / (total_jobs + 1)) * 80)
 
             part_output = output_dir / f"{job.get('id', f'part{part_num}')}.mp4"
+
+            # Re-roll handling: If marked for reroll, archive existing output so it regenerates
+            if part_num in reroll_indices and part_output.is_file():
+                v = 1
+                while (output_dir / f"{part_output.stem}_v{v}{part_output.suffix}").exists():
+                    v += 1
+                archive_path = output_dir / f"{part_output.stem}_v{v}{part_output.suffix}"
+                shutil.copyfile(part_output, archive_path)
+                part_output.unlink(missing_ok=True)
+                (work_dir / f"last_frame_part{part_num}.png").unlink(missing_ok=True)
+                reporter.report(
+                    f"stage{part_num}",
+                    step_index=part_num,
+                    total_steps=total_jobs + 1,
+                    percent=pct,
+                    title=part_title,
+                    log=f"{part_title} 已備份為 {archive_path.name}，正在依新分鏡重新推論...",
+                )
 
             # Checkpoint resume: Skip already rendered part
             if part_output.is_file() and part_output.stat().st_size > 1024:
@@ -1022,6 +1055,8 @@ def main() -> int:
     chain_parser.add_argument("--no-high-mem", action="store_true")
     chain_parser.add_argument("--output-dir", type=Path, default=Path("output"))
     chain_parser.add_argument("--timeout", type=float, default=float(os.environ.get("COLAB_EXEC_TIMEOUT", "3600")))
+    chain_parser.add_argument("--reroll", type=int, default=None, help="1-based index of segment to re-roll (e.g. 2 for Part 2)")
+    chain_parser.add_argument("--cascade", action="store_true", help="When re-rolling, cascade regeneration to all subsequent segments")
 
     single_parser = sub.add_parser("single", help="Compatibility interface for run_colab_inference.sh")
     single_parser.add_argument("--image", "-i", action="append", required=True)
@@ -1110,6 +1145,8 @@ def main() -> int:
                 high_mem=not args.no_high_mem,
                 output_dir=args.output_dir.expanduser().resolve(),
                 exec_timeout=args.timeout,
+                reroll=args.reroll,
+                cascade=args.cascade,
             )
             print(json.dumps(result, ensure_ascii=False))
             return 0 if result["status"] == "completed" else 1

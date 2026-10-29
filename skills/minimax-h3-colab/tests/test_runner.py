@@ -387,6 +387,56 @@ class RunnerTests(unittest.TestCase):
         self.assertEqual(result["completed_parts"], 1)
         self.assertTrue(Path(result["final_output"]).is_file())
 
+    def test_run_chain_reroll_single_archives_and_keeps_others(self) -> None:
+        manifest_data = {
+            "project": "test_reroll",
+            "total_seconds": 15,
+            "jobs": [
+                {"id": "part1", "title": "Part 1", "prompt": "p1", "duration_seconds": 5, "reference_images": [str(self.root / "ref.png")]},
+                {"id": "part2", "title": "Part 2", "prompt": "p2 updated", "duration_seconds": 5},
+                {"id": "part3", "title": "Part 3", "prompt": "p3", "duration_seconds": 5}
+            ]
+        }
+        ref_img = self.root / "ref.png"
+        ref_img.write_bytes(b"fake ref")
+        manifest_path = self.root / "reroll_manifest.json"
+        manifest_path.write_text(json.dumps(manifest_data), encoding="utf-8")
+
+        output_dir = self.root / "reroll_output"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        part1 = output_dir / "part1.mp4"
+        part2 = output_dir / "part2.mp4"
+        part3 = output_dir / "part3.mp4"
+        part1.write_bytes(b"original part 1 content " * 100)
+        part2.write_bytes(b"original part 2 content " * 100)
+        part3.write_bytes(b"original part 3 content " * 100)
+
+        result = runner.run_chain(
+            manifest_path,
+            session_id=None,
+            relay_url=None,
+            session=None,
+            gpu="A100",
+            high_mem=False,
+            output_dir=output_dir,
+            exec_timeout=60,
+            reroll=2,
+            cascade=False,
+        )
+
+        self.assertEqual(result["status"], "completed")
+        # Check part2 was archived to part2_v1.mp4
+        archived_part2 = output_dir / "part2_v1.mp4"
+        self.assertTrue(archived_part2.is_file())
+        self.assertEqual(archived_part2.read_bytes(), b"original part 2 content " * 100)
+
+        # Check part1 and part3 were preserved from checkpoints
+        self.assertEqual(part1.read_bytes(), b"original part 1 content " * 100)
+        self.assertEqual(part3.read_bytes(), b"original part 3 content " * 100)
+
+        # Check final merged output exists
+        self.assertTrue(Path(result["merged_output"]).is_file())
+
 
 if __name__ == "__main__":
     unittest.main()
