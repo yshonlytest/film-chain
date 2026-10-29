@@ -219,25 +219,29 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 18px;
-      height: 18px;
+      width: 19px;
+      height: 19px;
+      min-width: 19px;
+      min-height: 19px;
       border-radius: 50%;
       background: rgba(99, 102, 241, 0.22);
       color: #a5b4fc;
       border: 1px solid rgba(99, 102, 241, 0.45);
       font-size: 0.72rem;
       font-weight: 700;
-      cursor: help;
+      cursor: pointer;
       user-select: none;
       margin-left: 6px;
       vertical-align: middle;
       transition: all 0.15s ease;
+      touch-action: manipulation;
     }
-    .info-tip:hover {
+    .info-tip:hover, .info-tip:focus-visible {
       background: var(--accent);
       color: #ffffff;
       border-color: var(--accent);
       transform: scale(1.08);
+      outline: none;
     }
     .info-tip .tooltip-content {
       visibility: hidden;
@@ -273,7 +277,42 @@
       border-style: solid;
       border-color: #3b4d6e transparent transparent transparent;
     }
-    .info-tip:hover .tooltip-content { visibility: visible; opacity: 1; }
+    .info-tip:hover .tooltip-content,
+    .info-tip.pinned .tooltip-content {
+      visibility: visible;
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Header info-tip tooltip positioning downwards to avoid off-screen clipping */
+    header .info-tip .tooltip-content {
+      bottom: auto;
+      top: calc(100% + 10px);
+      right: 0;
+      left: auto;
+      transform: none;
+    }
+    header .info-tip .tooltip-content::after {
+      top: auto;
+      bottom: 100%;
+      right: 6px;
+      left: auto;
+      transform: none;
+      border-color: transparent transparent #3b4d6e transparent;
+    }
+
+    @media (max-width: 768px) {
+      .info-tip {
+        width: 22px;
+        height: 22px;
+        min-width: 22px;
+        min-height: 22px;
+        font-size: 0.8rem;
+      }
+      .info-tip .tooltip-content {
+        display: none !important;
+      }
+    }
 
     /* Security Notice Banner */
     .security-notice-card {
@@ -672,11 +711,12 @@
     <div class="header-actions">
       <div style="display:inline-flex; align-items:center;">
         <span id="comfyStatusBadge" class="badge warn" onclick="checkComfyConnection()" style="cursor:pointer;">檢查本地 ComfyUI...</span>
-        <span class="info-tip">ⓘ
+        <span class="info-tip" role="button" tabindex="0" aria-label="查看本地 ComfyUI 服務狀態說明">ⓘ
           <span class="tooltip-content">
             <strong>🖥️ 本地 ComfyUI 服務狀態</strong><br>
             • 綠燈 🟢：本機服務連線正常。<br>
-            • 黃燈 ⚪：未連線。若使用本地引擎，請先執行 <code>一鍵啟動_H3分鏡工作坊.command</code> 即可。
+            • 黃燈 ⚪：未連線。若使用本地引擎，請先執行 <code>一鍵啟動_H3分鏡工作坊.command</code> 即可。<br>
+            <span style="color:#7dd3fc; font-size:0.75rem; display:block; margin-top:4px;">💡 提示：若使用預設推薦的「路線 1 雲端模式 (Google Colab)」，無需啟動本機服務亦可正常創作！</span>
           </span>
         </span>
       </div>
@@ -711,7 +751,7 @@
       <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
         <strong style="font-size:0.96rem; color:#e2e8f0; display:flex; align-items:center; gap:8px;">
           <span>🔀 選擇渲染模式 (Rendering Pipeline)</span>
-          <span class="info-tip">ⓘ
+          <span class="info-tip" role="button" tabindex="0" aria-label="查看渲染模式說明">ⓘ
             <span class="tooltip-content">
               <strong>💡 三條獨立渲染工作流</strong><br>
               • 路線 1 (預設推薦)：Google Colab + Gemini Agent 自動化工作流。<br>
@@ -815,7 +855,7 @@
         <div class="ref-image-col">
           <label>
             <span>角色與風格視覺參考圖</span>
-            <span class="info-tip">ⓘ
+            <span class="info-tip" role="button" tabindex="0" aria-label="查看主角風格視覺參考圖說明">ⓘ
               <span class="tooltip-content">
                 <strong>🖼️ 主角風格錨定圖</strong><br>
                 供 AI 分析視覺風格、主要角色外貌與場景質感，確保後續 9 格分鏡及每 5 秒影片均維持高度一致性。
@@ -840,7 +880,7 @@
           <div class="form-group" style="margin-bottom:0;">
             <label for="chineseDesc">
               <span>📝 故事劇情大綱與對白（台詞請置於「...」引號內）</span>
-              <span class="info-tip">ⓘ
+              <span class="info-tip" role="button" tabindex="0" aria-label="查看對白口型同步提示">ⓘ
                 <span class="tooltip-content">
                   <strong>📝 對白口型同步提示</strong><br>
                   對白請置於引號中（如「坐太久活動一下」），AI 導演會自動標註 <code>&lt;d&gt;[Chinese] ...&lt;/d&gt;</code>，生成自然的中文發音與精確唇形。
@@ -855,7 +895,7 @@
             <div>
               <label for="durationModeSelect">
                 <span>⏱️ 影片時長方案（以每 5 秒為一鏡段接力）</span>
-                <span class="info-tip">ⓘ
+                <span class="info-tip" role="button" tabindex="0" aria-label="查看時長方案說明">ⓘ
                   <span class="tooltip-content">
                     <strong>⏱️ 時長方案說明</strong><br>
                     • <strong>🤖 AI 自動分析</strong>：依情節轉折與台詞量自動給出 10s、15s、20s... 最佳秒數，保證節奏舒適不趕場。<br>
@@ -1237,6 +1277,18 @@
     </div>
     <div style="display:flex; justify-content:flex-end; margin-top:16px;">
       <button type="button" class="primary" onclick="document.getElementById('shareDialog').close()">關閉</button>
+    </div>
+  </dialog>
+
+  <!-- Unified Mobile & Touch Info Modal ("呈現視窗") -->
+  <dialog id="infoTipDialog" style="max-width: 440px; border-radius: 14px; padding: 20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+      <h3 id="infoTipDialogTitle" style="margin:0; font-size: 1.05rem; color: #38bdf8; display:flex; align-items:center; gap:8px;">ℹ️ 說明提示</h3>
+      <button type="button" onclick="closeInfoTipModal()" style="padding: 2px 8px; font-size: 1.2rem; line-height: 1; border-radius: 6px; background: transparent; border: 1px solid var(--border); color: var(--muted); cursor:pointer;">&times;</button>
+    </div>
+    <div id="infoTipDialogBody" style="font-size: 0.88rem; line-height: 1.65; color: #cbd5e1; max-height: 65vh; overflow-y: auto;"></div>
+    <div style="display:flex; justify-content:flex-end; margin-top: 18px;">
+      <button type="button" class="primary" style="padding: 6px 18px; font-size: 0.86rem;" onclick="closeInfoTipModal()">我知道了</button>
     </div>
   </dialog>
 
@@ -1835,7 +1887,7 @@ python skills/minimax-h3-colab/scripts/runner.py chain --manifest colab_manifest
         <div class="pipeline-tracker-header">
           <h4 style="font-size:0.92rem; color:#38bdf8; margin:0; display:flex; align-items:center; gap:8px;">
             <span>⏱️ 雲端渲染與拼接管線進度預估 (共 ${count} 段 · 總長 ${totalSec} 秒)</span>
-            <span class="info-tip">ⓘ
+            <span class="info-tip" role="button" tabindex="0" aria-label="查看實測效能基準說明">ⓘ
               <span class="tooltip-content">
                 <strong>💡 實測效能基準</strong><br>
                 每段 5 秒 (1376×768) 影片在 Colab A100 上實測約需 4 分 40 秒。Agent 會自動接力完成 ${count} 段渲染、尾幀傳遞與 ffmpeg 拼接。
@@ -1981,6 +2033,67 @@ python skills/minimax-h3-colab/scripts/runner.py chain --manifest colab_manifest
       localStorage.setItem("h3_prompt_provider", document.getElementById("promptProviderSelect").value);
       localStorage.setItem("h3_image_provider", document.getElementById("imageProviderSelect").value);
     }
+
+    // ==================== Info Tip Mobile Modal & Interactions ====================
+    function showInfoTipModal(htmlContent) {
+      const modal = document.getElementById("infoTipDialog");
+      const body = document.getElementById("infoTipDialogBody");
+      const title = document.getElementById("infoTipDialogTitle");
+      if (!modal || !body) return;
+
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = htmlContent;
+      const strongEl = tempDiv.querySelector("strong");
+      if (strongEl) {
+        title.innerHTML = strongEl.innerHTML;
+        strongEl.remove();
+      } else {
+        title.innerHTML = "ℹ️ 說明提示";
+      }
+      body.innerHTML = tempDiv.innerHTML.trim();
+      modal.showModal();
+    }
+
+    function closeInfoTipModal() {
+      const modal = document.getElementById("infoTipDialog");
+      if (modal && modal.open) {
+        modal.close();
+      }
+    }
+
+    // Global listener for interactive info-tip tooltips on touch & click
+    document.addEventListener("click", (e) => {
+      const tip = e.target.closest(".info-tip");
+      if (!tip) {
+        document.querySelectorAll(".info-tip.pinned").forEach(el => el.classList.remove("pinned"));
+        return;
+      }
+
+      const tooltip = tip.querySelector(".tooltip-content");
+      if (!tooltip) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const isMobileOrTouch = window.innerWidth <= 768 || window.matchMedia("(pointer: coarse)").matches;
+      if (isMobileOrTouch) {
+        showInfoTipModal(tooltip.innerHTML);
+      } else {
+        const wasPinned = tip.classList.contains("pinned");
+        document.querySelectorAll(".info-tip.pinned").forEach(el => el.classList.remove("pinned"));
+        if (!wasPinned) tip.classList.add("pinned");
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("info-tip")) {
+        const tooltip = e.target.querySelector(".tooltip-content");
+        if (tooltip) {
+          e.preventDefault();
+          showInfoTipModal(tooltip.innerHTML);
+        }
+      }
+    });
 
     function openSettingsModal() {
       const p = getPrefs();
@@ -3428,6 +3541,21 @@ Return ONLY valid JSON matching this schema:
       selectRoute("colab");
       checkComfyConnection();
       loadShisaDemo();
+
+      const infoDialog = document.getElementById("infoTipDialog");
+      if (infoDialog) {
+        infoDialog.addEventListener("click", (e) => {
+          const rect = infoDialog.getBoundingClientRect();
+          if (
+            e.clientX < rect.left ||
+            e.clientX > rect.right ||
+            e.clientY < rect.top ||
+            e.clientY > rect.bottom
+          ) {
+            infoDialog.close();
+          }
+        });
+      }
 
       const player = document.getElementById("mainVideoPlayer");
       player.addEventListener("ended", () => {
