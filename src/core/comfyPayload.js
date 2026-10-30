@@ -48,8 +48,42 @@
       throw new Error("分段列表 (segments) 必須為非空陣列");
     }
 
-    const speed = Object.assign({}, DEFAULT_SPEED_CONFIG, speedConfig || {});
-    const base = Object.assign({}, DEFAULT_BASE_CONFIG, baseConfig || {});
+    // 防禦性檢查：驗證各分段至少具備標題、有效 end_panel 與提示詞
+    segments.forEach((seg, i) => {
+      if (!seg || typeof seg !== 'object') {
+        throw new Error(`分段列表第 ${i + 1} 項不是有效的物件`);
+      }
+      const panel = Number(seg.end_panel);
+      if (isNaN(panel) || panel < 1 || panel > 9) {
+        throw new Error(`分段列表第 ${i + 1} 項之 end_panel 必須為 1 到 9 之間的整數，當前為: ${seg.end_panel}`);
+      }
+      if (!seg.prompt || typeof seg.prompt !== 'string' || !seg.prompt.trim()) {
+        throw new Error(`分段列表第 ${i + 1} 項缺少有效的提示詞 (prompt)`);
+      }
+    });
+
+    const rawSpeed = Object.assign({}, DEFAULT_SPEED_CONFIG, speedConfig || {});
+    const rawBase = Object.assign({}, DEFAULT_BASE_CONFIG, baseConfig || {});
+
+    // 數值邊界防呆與正規化
+    const speed = {
+      steps: Math.max(1, Math.round(Number(rawSpeed.steps) || DEFAULT_SPEED_CONFIG.steps)),
+      layers: Math.max(1, Math.round(Number(rawSpeed.layers) || DEFAULT_SPEED_CONFIG.layers)),
+      reuse: Math.max(0, Math.round(Number(rawSpeed.reuse) || DEFAULT_SPEED_CONFIG.reuse)),
+      core_reuse: Math.max(0, Math.round(Number(rawSpeed.core_reuse) || DEFAULT_SPEED_CONFIG.core_reuse)),
+      token_reduction: Math.min(0.95, Math.max(0, Number(rawSpeed.token_reduction) || 0)),
+      render_width: Math.max(64, Math.round(Number(rawSpeed.render_width) || DEFAULT_SPEED_CONFIG.render_width)),
+      render_height: Math.max(64, Math.round(Number(rawSpeed.render_height) || DEFAULT_SPEED_CONFIG.render_height))
+    };
+
+    const base = {
+      width: Math.max(64, Math.round(Number(rawBase.width) || DEFAULT_BASE_CONFIG.width)),
+      height: Math.max(64, Math.round(Number(rawBase.height) || DEFAULT_BASE_CONFIG.height)),
+      frames: Math.max(1, Math.round(Number(rawBase.frames) || DEFAULT_BASE_CONFIG.frames)),
+      seed: Number.isFinite(Number(rawBase.seed)) ? Number(rawBase.seed) : DEFAULT_BASE_CONFIG.seed,
+      ssd_streaming: Boolean(rawBase.ssd_streaming)
+    };
+
     const prefix = outputPrefix || `storyboard/story_${Date.now()}`;
 
     return {

@@ -21,7 +21,8 @@
    * @returns {{ startSec: number, endSec: number, duration: number }}
    */
   function getSegmentTimeRange(segmentIndex) {
-    const idx = Math.max(0, Math.floor(segmentIndex));
+    const rawIdx = Number(segmentIndex);
+    const idx = Math.max(0, Math.floor(isNaN(rawIdx) ? 0 : rawIdx));
     const startSec = idx * SEGMENT_DURATION_SECONDS;
     const endSec = (idx + 1) * SEGMENT_DURATION_SECONDS;
     return {
@@ -37,7 +38,8 @@
    * @returns {number} 總秒數 (5 的倍數)
    */
   function calculateTotalSeconds(segmentCount) {
-    const count = Math.max(1, Math.floor(segmentCount || 1));
+    const rawCount = Number(segmentCount);
+    const count = Math.max(1, Math.floor(isNaN(rawCount) ? 1 : rawCount || 1));
     return count * SEGMENT_DURATION_SECONDS;
   }
 
@@ -47,8 +49,9 @@
    * @returns {number} 段數 (例如 3)
    */
   function calculateSegmentCountFromSeconds(targetSeconds) {
-    const sec = Math.max(5, Math.round(targetSeconds || 5));
-    return Math.max(1, Math.round(sec / SEGMENT_DURATION_SECONDS));
+    const rawSec = Number(targetSeconds);
+    const sec = Math.max(5, Math.round(isNaN(rawSec) ? 5 : rawSec || 5));
+    return Math.max(1, Math.ceil(sec / SEGMENT_DURATION_SECONDS));
   }
 
   /**
@@ -97,6 +100,7 @@
       return { valid: false, errors };
     }
 
+    let prevPanel = 0;
     segments.forEach((seg, i) => {
       if (!seg || typeof seg !== 'object') {
         errors.push(`第 ${i + 1} 段不是有效的物件`);
@@ -108,11 +112,21 @@
       const panel = Number(seg.end_panel);
       if (isNaN(panel) || panel < 1 || panel > 9) {
         errors.push(`第 ${i + 1} 段之 end_panel 必須為 1 到 9 之間的整數，當前為: ${seg.end_panel}`);
+      } else {
+        if (panel < prevPanel) {
+          errors.push(`第 ${i + 1} 段之 end_panel (${panel}) 小於前一段 (${prevPanel})，必須維持單調非遞減`);
+        }
+        prevPanel = panel;
       }
       if (!seg.prompt || typeof seg.prompt !== 'string' || !seg.prompt.trim()) {
         errors.push(`第 ${i + 1} 段缺少提示詞 (prompt)`);
       }
     });
+
+    const lastSeg = segments[segments.length - 1];
+    if (lastSeg && Number(lastSeg.end_panel) !== 9) {
+      errors.push(`最終分段之 end_panel 必須錨定為 9，當前為: ${lastSeg.end_panel}`);
+    }
 
     return {
       valid: errors.length === 0,

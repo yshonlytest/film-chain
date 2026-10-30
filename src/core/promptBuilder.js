@@ -14,6 +14,7 @@
   'use strict';
 
   const CONTINUITY_PHRASE = "Create a 5-second live-action cinematic film continuing seamlessly from the exact last frame, pose, camera angle, and lighting of the previous segment";
+  const DEFAULT_SEGMENT_DURATION_SECONDS = 5;
 
   /**
    * 建立 AI 導演的分鏡系統指令 (System Instruction)
@@ -22,8 +23,8 @@
    * @returns {string} 完整的導演系統指令
    */
   function buildDirectorSystemPrompt(durationMode, targetSeconds) {
-    const sec = Math.max(5, targetSeconds || 15);
-    const count = Math.max(1, Math.round(sec / 5));
+    const sec = Math.max(DEFAULT_SEGMENT_DURATION_SECONDS, targetSeconds || 15);
+    const count = Math.max(1, Math.round(sec / DEFAULT_SEGMENT_DURATION_SECONDS));
 
     const durationInstruction = durationMode === "expand"
       ? `The user explicitly requested a total video duration of ${sec} seconds (${count} segments of 5 seconds each). You MUST expand, enrich, and pace the user's Chinese story into a rich, unhurried ${sec}-second screenplay consisting of exactly ${count} sequential 5-second segments!`
@@ -113,7 +114,7 @@ Return ONLY valid JSON matching this schema:
   }
 
   /**
-   * 清理 LLM 回傳的 Markdown 代碼標籤並解析為 JSON 物件
+   * 清理 LLM 回傳的 Markdown 代碼標籤或引言並安全解析為 JSON 物件
    * @param {string} rawText - 原始回傳文字
    * @returns {any} 解析後的 JSON 物件
    */
@@ -121,13 +122,41 @@ Return ONLY valid JSON matching this schema:
     if (!rawText || typeof rawText !== "string") {
       throw new Error("無效的 JSON 原始文字輸入");
     }
-    const sanitized = rawText
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/, "")
-      .replace(/\s*```$/, "")
-      .trim();
 
-    return JSON.parse(sanitized);
+    // 1. 優先嘗試擷取 ```json ... ``` 或 ``` ... ``` 區塊
+    const codeBlockMatch = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    let content = codeBlockMatch ? codeBlockMatch[1].trim() : rawText.trim();
+
+    // 嘗試直接解析
+    try {
+      return JSON.parse(content);
+    } catch (_) {
+      // 容錯提取：若包含前後雜訊或說明文字
+    }
+
+    // 2. 優先嘗試截取最外層 JSON 物件 { ... }
+    const firstBrace = content.indexOf('{');
+    const lastBrace = content.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(content.substring(firstBrace, lastBrace + 1));
+      } catch (_) {
+        // 若物件候選字串解析失敗，繼續嘗試陣列
+      }
+    }
+
+    // 3. 嘗試截取最外層 JSON 陣列 [ ... ]
+    const firstBracket = content.indexOf('[');
+    const lastBracket = content.lastIndexOf(']');
+    if (firstBracket !== -1 && lastBracket > firstBracket) {
+      try {
+        return JSON.parse(content.substring(firstBracket, lastBracket + 1));
+      } catch (_) {
+        // 陣列候選字串解析失敗
+      }
+    }
+
+    return JSON.parse(content);
   }
 
   return {
